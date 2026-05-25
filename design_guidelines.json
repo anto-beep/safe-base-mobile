@@ -1,0 +1,103 @@
+{
+  "theme": "Dark",
+  "archetype": "Swiss & High-Contrast (Archetype 4)",
+  "vibe": "Regulatory-grade, no-nonsense, Australian. Stripe meets WorkSafe.",
+  "design_principles": [
+    "Strict functionalism: Utility over decoration.",
+    "Geometric & Sharp: Border radius is explicitly 0px everywhere.",
+    "High Contrast Dark Mode: Deep #0A0A0A surfaces with bright industry-specific accents.",
+    "Scannability: Data-heavy content must breathe through generous padding (16px to 24px).",
+    "Visible Structure: Use 1px sharp borders to separate sections, no diffuse shadows."
+  ],
+  "colors": {
+    "backgrounds": {
+      "app_bg": "#0A0A0A",
+      "surface_default": "#141414",
+      "surface_elevated": "#1A1A1A"
+    },
+    "text": {
+      "primary": "#FFFFFF",
+      "secondary": "#A1A1AA",
+      "muted": "#71717A"
+    },
+    "borders": {
+      "default": "#27272A",
+      "focus": "#FFFFFF"
+    },
+    "brand_and_status": {
+      "warning": "#FFCC00",
+      "error": "#EF4444",
+      "success": "#10B981"
+    },
+    "industry_accents": {
+      "trades": "#FFCC00",
+      "hospitality": "#F59E0B",
+      "transport": "#0DC4B5",
+      "healthcare": "#2196A6",
+      "retail": "#A855F7"
+    }
+  },
+  "typography": {
+    "primary_font_ios": "System",
+    "primary_font_android": "System",
+    "mono_font": "monospace",
+    "scale": {
+      "h1": { "fontSize": 32, "lineHeight": 38, "fontWeight": "800", "letterSpacing": -0.5 },
+      "h2": { "fontSize": 24, "lineHeight": 30, "fontWeight": "700", "letterSpacing": -0.3 },
+      "h3": { "fontSize": 20, "lineHeight": 26, "fontWeight": "600" },
+      "body": { "fontSize": 16, "lineHeight": 24, "fontWeight": "400" },
+      "eyebrow": { "fontSize": 12, "lineHeight": 16, "fontWeight": "700", "textTransform": "uppercase", "letterSpacing": 1.5, "fontFamily": "monospace" }
+    }
+  },
+  "layout_and_spacing": {
+    "corners": "0px",
+    "padding": {
+      "screen": 16,
+      "card": 16,
+      "section_gap": 24,
+      "element_gap": 12
+    },
+    "borders": "1px solid #27272A on structural cards and inputs."
+  },
+  "components": {
+    "Buttons": {
+      "style": "Rectangular (0px radius). Solid fill for primary using industry accent. Transparent with 1px border for secondary. Minimum tap target 48px height.",
+      "text": "Uppercase, bold, centered, tracking tight."
+    },
+    "Cards": {
+      "style": "0px radius. Background #141414. Border 1px solid #27272A.",
+      "header": "Eyebrow mono font for category (e.g., / PRE-TRIP), followed by bold title."
+    },
+    "Inputs": {
+      "style": "Rectangular, 1px border (#27272A). Background #0A0A0A. Focus state applies industry accent color to border. Min height 48px."
+    },
+    "IndustryAlertTile": {
+      "style": "Background #141414, solid left border 4px thick using the user's specific industry accent color.",
+      "layout": "Row with icon, title, description, and right-aligned inline action button."
+    },
+    "TabBar": {
+      "style": "Background #0A0A0A with 1px top border (#27272A). Active icon uses industry accent color."
+    }
+  },
+  "media": {
+    "login_background": {
+      "url": "https://static.prod-images.emergentagent.com/jobs/a57af9a8-0335-40f6-97fa-83b3bf0ccb34/images/e2639357d86dc06451309c2a23ef4c6923fefafaaf402b431bee8c616f961842.png",
+      "description": "Dark atmospheric background for industrial mobile app login screen",
+      "usage": "Use as full-screen ImageBackground on the Onboarding/Login screen with an opaque #0A0A0A/80 overlay to ensure text contrast."
+    },
+    "logo": {
+      "url": "https://static.prod-images.emergentagent.com/jobs/a57af9a8-0335-40f6-97fa-83b3bf0ccb34/images/c702745f1f1cc63d7a12ca70af438f9155de31bf6dced284a1292e2f66f65406.png",
+      "description": "Minimalist geometric logo icon for safety compliance SaaS named SafeBase",
+      "usage": "Use on Login screen and Profile/Settings header. Scale to 48x48 max."
+    }
+  },
+  "instructions_to_main_agent": [
+    "Build strictly for Expo React Native (SDK 54). Enforce hard edges (0px border-radius) everywhere.",
+    "Dynamic Theming: Contextually read user.industry to apply the corresponding accent color to primary buttons, active tabs, inline actions, and the left-border of Alert Tiles.",
+    "Do not use generic gray backgrounds; stick strictly to #0A0A0A for the main screen background and #141414 / #1A1A1A for cards and elevated surfaces.",
+    "Every actionable element (Pressable, TouchableOpacity, TextInput) MUST include a data-testid attribute formatted as kebab-case-role (e.g., data-testid='login-submit-button').",
+    "Implement the Concierge AI Chat tab with a distinct system-like chat UI. Keep chat bubbles sharp-cornered (0px).",
+    "No soft drop shadows. Create visual hierarchy strictly through surface color lightness and 1px structural borders.",
+    "Use system fonts for primary text. Use monospace fonts explicitly for small eyebrow labels (e.g., / DASHBOARD, / TRADES) to enforce the utilitarian, regulatory vibe."
+  ]
+}
