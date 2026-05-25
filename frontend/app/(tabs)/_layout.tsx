@@ -13,9 +13,8 @@ const iconRenderer = (name: keyof typeof Ionicons.glyphMap) =>
   };
 
 const HomeIcon = iconRenderer("grid-outline");
+const ModulesIcon = iconRenderer("apps-outline");
 const CaptureIcon = iconRenderer("add-circle-outline");
-const InboxIcon = iconRenderer("notifications-outline");
-const ChatIcon = iconRenderer("chatbubble-ellipses-outline");
 const ProfileIcon = iconRenderer("person-circle-outline");
 
 export default function TabsLayout() {
@@ -35,6 +34,7 @@ export default function TabsLayout() {
   if (!user) return <Redirect href="/login" />;
 
   const accent = accentFor(user.industry);
+  const isWorker = (user.role ?? "").toLowerCase() === "worker";
 
   return (
     <Tabs
@@ -50,18 +50,21 @@ export default function TabsLayout() {
         },
         tabBarActiveTintColor: accent,
         tabBarInactiveTintColor: COLORS.textMuted,
-        tabBarLabelStyle: {
-          fontSize: 10,
-          fontWeight: "700",
-          letterSpacing: 1,
-          textTransform: "uppercase",
-        },
+        tabBarLabelStyle: { fontSize: 10, fontWeight: "700", letterSpacing: 1, textTransform: "uppercase" },
       }}
     >
       <Tabs.Screen name="index" options={{ title: "Home", tabBarIcon: HomeIcon, tabBarTestID: "tab-home" }} />
+      <Tabs.Screen
+        name="modules"
+        options={{
+          title: "Modules",
+          tabBarIcon: ModulesIcon,
+          tabBarTestID: "tab-modules",
+          // Workers don't see modules — empty/hidden tab.
+          href: isWorker ? null : undefined,
+        }}
+      />
       <Tabs.Screen name="capture" options={{ title: "Capture", tabBarIcon: CaptureIcon, tabBarTestID: "tab-capture" }} />
-      <Tabs.Screen name="notifications" options={{ title: "Inbox", tabBarIcon: InboxIcon, tabBarTestID: "tab-notifications" }} />
-      <Tabs.Screen name="chat" options={{ title: "Concierge", tabBarIcon: ChatIcon, tabBarTestID: "tab-chat" }} />
       <Tabs.Screen name="profile" options={{ title: "Profile", tabBarIcon: ProfileIcon, tabBarTestID: "tab-profile" }} />
     </Tabs>
   );

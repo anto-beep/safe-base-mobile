@@ -20,7 +20,10 @@
         "backgroundColor": "#0A0A0A"
       },
       "edgeToEdgeEnabled": true,
-      "permissions": ["NOTIFICATIONS", "POST_NOTIFICATIONS"]
+      "permissions": [
+        "NOTIFICATIONS",
+        "POST_NOTIFICATIONS"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -44,7 +47,9 @@
         {
           "color": "#FFCC00"
         }
-      ]
+      ],
+      "expo-sqlite",
+      "expo-background-task"
     ],
     "experiments": {
       "typedRoutes": true

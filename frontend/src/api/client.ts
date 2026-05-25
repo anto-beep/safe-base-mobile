@@ -50,6 +50,7 @@ export interface RequestOpts {
   body?: any;
   authOptional?: boolean;
   timeoutMs?: number;
+  headers?: Record<string, string>;
 }
 
 export async function apiRequest<T = any>(
@@ -63,6 +64,7 @@ export async function apiRequest<T = any>(
   };
   const token = await getToken();
   if (token) headers["Authorization"] = `Bearer ${token}`;
+  if (opts.headers) Object.assign(headers, opts.headers);
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), opts.timeoutMs ?? 20000);

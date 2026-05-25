@@ -3,17 +3,21 @@
 ## 1. Product
 
 The SafeBase mobile companion app is a native (Expo SDK 54) React Native
-client for the existing SafeBase compliance SaaS. It serves **both**:
+client for the existing SafeBase compliance SaaS. It serves **three** distinct
+audiences with three distinct nav trees:
 
-- **Owners** — live industry dashboards, inline actions (pause driver, send
-  AHPRA reminder, send licence reminder, ack lone-worker check-in), an inbox
-  of regulator/team alerts, and a Claude-backed concierge chat.
-- **Workers** — daily capture flows: lone-worker check-in, pre-trip
-  inspection, fitness-for-duty, temperature log, incident report, SWMS
-  sign-on.
+1. **Owners / customer admins** — live industry dashboards, inline actions
+   (pause driver, send AHPRA reminder, send licence reminder, ack lone-worker
+   check-in), notifications inbox with polling, module browser mirroring the
+   web, and Claude-backed concierge chat.
+2. **Workers** — trimmed daily-shift home (credentials + recent check-ins +
+   capture quick-tiles). No modules tab.
+3. **SafeBase internal staff** — a completely separate auth context (different
+   JWT secret, different storage key) with KPI dashboard, accounts, mocked
+   Stripe subscriptions, feature flags and audit logs.
 
-The app is **industry-aware** — every screen swaps accent colour, copy and
-recommended captures by `user.industry`:
+The app is **industry-aware** — every owner screen swaps accent colour, copy
+and recommended captures by `user.industry`:
 - Trades → `#FFCC00`
 - Hospitality → `#F59E0B`
 - Transport → `#0DC4B5`
@@ -24,100 +28,159 @@ recommended captures by `user.industry`:
 
 - **Frontend:** Expo Router (SDK 54), TypeScript, file-based routes, dark
   brutalist design tokens (0px corners, 1px borders, monospace eyebrows).
+- **Logo:** typographic mark — yellow tile (`#FFCC00`) + Ionicons `cube` + the
+  `SAFEBASE` wordmark — rendered as a component (`src/components/Logo.tsx`).
+  No image dependency.
 - **Backend:** the existing external SafeBase FastAPI service at
-  `https://safe-systems.preview.emergentagent.com/api/*` (configured via
-  `EXPO_PUBLIC_SAFEBASE_API`). The mobile app **does not** modify
-  `/app/backend/server.py` (the local stub) — it points entirely at the
-  external service.
-- **State:** lightweight `AuthContext` + `expo-secure-store` for the JWT,
-  `AsyncStorage` for non-secrets (chat session id, push token id, user
-  snapshot).
-- **Push:** `expo-notifications` registers an Expo push token and forwards it
-  to `POST /api/device-tokens/register`. On sign-out we soft-deactivate via
-  `DELETE /api/device-tokens/{id}`.
-- **Auth:** email/password against `/api/auth/login` and `/api/auth/register`.
-  Google sign-in via Emergent's hosted flow at `auth.emergentagent.com` —
-  `session_id` is forwarded to `/api/auth/google-session`.
+  `https://safe-systems.preview.emergentagent.com/api/*` (configurable via
+  `EXPO_PUBLIC_SAFEBASE_API`). The mobile app **does not** modify the local
+  backend — it points entirely at the external service.
+- **State:** `AuthContext` (customer) + `AdminAuthContext` (SafeBase staff) +
+  `AccessibilityContext`. JWTs in `expo-secure-store`, snapshots in
+  `AsyncStorage`.
+- **Push:** `expo-notifications` registers a token and forwards it to
+  `POST /api/device-tokens/register`. Soft-deactivates on logout.
+- **Notifications polling:** `useNotificationPolling()` hits `/notifications`
+  every 60 s while the app is foregrounded (and re-fires on
+  background→foreground transition). Unread badge on the home header bell.
+- **Offline-first capture:** native uses `expo-sqlite` + `@react-native-community/netinfo`
+  to queue every capture POST under a stable `client_event_id` and replay it
+  with header `Idempotency-Key: <client_event_id>` when connectivity returns.
+  On web (no SQLite WASM bundled) the queue degrades to a direct POST.
+- **Biometric unlock:** `expo-local-authentication`. After a successful
+  password sign-in the user can toggle Face ID / fingerprint on in
+  `profile.tsx`. The current JWT is stashed under a biometric-protected
+  secure-store key (`safebase.biometric.secret_jwt`) and auto-prompted at the
+  top of the login screen on next launch.
 
 ## 3. Route map
 
+### Customer tree
 | Route                              | Purpose                                |
 |------------------------------------|----------------------------------------|
 | `/`                                | Boot redirect (auth gate)              |
-| `/login`                           | Email/password + Google sign-in        |
+| `/login`                           | Email + password + Google + Biometric  |
 | `/register`                        | Sign-up (with industry picker)         |
 | `/forgot-password`                 | Reset link                             |
-| `/(tabs)`                          | Bottom-tab shell                       |
-| `/(tabs)/index`                    | Industry-aware Home dashboard          |
-| `/(tabs)/capture`                  | Capture hub (industry-prioritised)     |
-| `/(tabs)/notifications`            | Inbox + deep-linking                   |
-| `/(tabs)/chat`                     | Concierge chat (Claude 4.5)            |
-| `/(tabs)/profile`                  | Profile, industry switcher, logout     |
-| `/capture/lone-worker-checkin`     | Retail capture                         |
-| `/capture/pretrip-inspection`      | Transport capture                      |
-| `/capture/fitness-for-duty`        | Transport capture                      |
-| `/capture/temperature-log`         | Hospitality / Healthcare capture       |
-| `/capture/incident-report`         | All industries                         |
-| `/capture/swms-signon`             | Trades / Transport capture             |
+| `/(tabs)`                          | Bottom-tab shell (Home, Modules, Capture, Profile) |
+| `/(tabs)/index`                    | Industry-aware Home (worker variant if `role=worker`) |
+| `/(tabs)/modules`                  | Module grid mirroring the web          |
+| `/(tabs)/capture`                  | Capture hub                            |
+| `/(tabs)/profile`                  | Industry switcher, biometric toggle, logout |
+| `/chat`                            | Concierge chat (accessed via FAB)      |
+| `/notifications`                   | Inbox (accessed via header bell)       |
+| `/module/[slug]`                   | Generic module browser → deep-links to web for full CRUD |
+| `/capture/lone-worker-checkin`     | Retail capture (offline-queued)        |
+| `/capture/pretrip-inspection`      | Transport capture (offline-queued)     |
+| `/capture/fitness-for-duty`        | Transport capture (offline-queued)     |
+| `/capture/temperature-log`         | Hospitality capture (offline-queued)   |
+| `/capture/incident-report`         | All-industry capture (offline-queued)  |
+| `/capture/swms-signon`             | Trades capture                         |
+
+### Admin tree (separate JWT context)
+| Route                              | Purpose                                |
+|------------------------------------|----------------------------------------|
+| `/admin-login`                     | Internal staff sign-in + TOTP          |
+| `/(admin)`                         | KPI dashboard + activity feed          |
+| `/(admin)/accounts`                | Customer accounts list                 |
+| `/(admin)/subscriptions`           | Stripe-mirror subscriptions            |
+| `/(admin)/feature-flags`           | Global toggles                         |
+| `/(admin)/audit-logs`              | Write-action audit trail               |
+
+### Global overlays (auto-mounted when a customer is signed in)
+- **Floating concierge FAB** (bottom-right) — opens `/chat`. Detects
+  `offer_lead_capture: true` from `/api/concierge/chat` and pops a
+  lead-capture sheet that POSTs `/api/concierge/lead`.
+- **Accessibility FAB** (bottom-left) — opens an a11y sheet (text size,
+  high contrast, reduce motion, dyslexia font, emphasize links).
+  Persists to `/api/accessibility/preferences`.
 
 ## 4. Backend endpoints used
 
 Auth: `/auth/login`, `/auth/register`, `/auth/me`, `/auth/logout`,
 `/auth/forgot-password`, `/auth/google-session`, `/auth/me/industry`.
 
-Home: `/compliance/score`, `/notifications`, `/dashboard/widget/{credential-expiry|temp-alert|fatigue-alert|ahpra-expiry|lone-worker}`.
+Home: `/compliance/score`, `/notifications`, `/dashboard/widget/{credential-expiry|temp-alert|fatigue-alert|ahpra-expiry|lone-worker}`, `/worker/my-summary`.
 
 Inline actions: `/transport/drivers/{id}/pause`,
 `/healthcare/ahpra-register/{id}/remind`, `/licences/{id}/remind`,
 `/retail/lone-worker/{id}/acknowledge`.
 
-Capture: `/retail/lone-worker/checkin`, `/transport/pretrip-inspections`,
+Captures (all with `client_event_id` + `Idempotency-Key` header):
+`/retail/lone-worker/checkin`, `/transport/pretrip-inspections`,
 `/transport/fitness-for-duty`, `/hospitality/temperature-logs`, `/incidents`,
 `/swms`.
 
-Notifications: `/notifications`, `/notifications/{id}/read`,
-`/notifications/read-all`.
+Modules: `/incidents`, `/workers`, `/documents`, `/tradeinduct/programs`,
+`/safety/summary`, `/safety/risks`, `/reports`, `/compliance-inbox`,
+`/automations`, `/regulator-pipeline/pending`, `/api-keys`, `/addons/active`,
++ 13 industry-specific list endpoints.
 
-Chat: `/concierge/chat`.
+Notifications: `/notifications`, `/notifications/{id}/read`,
+`/notifications/read-all` (60 s polling).
+
+Chat: `/concierge/chat`, `/concierge/lead`.
+
+Accessibility: `/accessibility/preferences`.
 
 Push: `/device-tokens/register`, `/device-tokens/{id}`.
 
-## 5. Design language
+Admin (separate JWT): `/internal-admin/login`, `/verify-2fa`, `/me`,
+`/logout`, `/dashboard/kpi`, `/dashboard/activity-feed`, `/accounts`,
+`/subscriptions`, `/feature-flags`, `/audit-logs`.
 
-- Dark brutalist: `#0A0A0A` base, `#141414` surfaces, `#27272A` 1px borders.
-- 0px corners everywhere.
-- Monospace eyebrow labels (`/ DASHBOARD`, `/ TRADES`).
-- Industry accent applied to primary buttons, active tab icon, input focus
-  ring, alert-tile left border, score number, chat user bubble.
+## 5. Iteration history
 
-## 6. Push notifications
+### Iter1 — MVP shipped (Feb 25 2026)
+- Auth (login / register / forgot-password / Google sign-in)
+- 5 tabs (Home / Capture / Inbox / Concierge / Profile)
+- Industry-aware home with `IndustryAlertTile` and inline actions
+- 6 capture flows
+- Concierge chat
+- Expo push registration
 
-- Permission requested **contextually**, only after sign-in.
-- Token registered on first run via `usePushRegistration(true)` in
-  `/app/(tabs)/_layout.tsx`.
-- Deregister on logout (`deregisterPush()` in profile screen).
-- Android channel `default` is registered with high importance and the
-  SafeBase yellow LED colour.
+### Iter2 — Full v1 build (Feb 25 2026)
+Brought the app from MVP to the full §12 Definition of Done from the build
+brief:
 
-## 7. Known external dependency
+- **Typographic logo** replaces all image references (`src/components/Logo.tsx`).
+- **Biometric unlock** (Face ID / fingerprint) with auto-prompt on launch.
+  Stashed JWT decrypted via `expo-local-authentication`.
+- **Internal Admin** — separate `AdminAuthContext`, separate JWT storage key
+  (`safebase.admin.jwt`), `/admin-login` with TOTP verification, full 5-tab
+  admin tree (KPI / Accounts / Subscriptions / Feature flags / Audit logs).
+- **Worker role split** — `(tabs)/index.tsx` branches on `user.role` to
+  render `WorkerHome` (credentials + check-ins + 2 capture tiles) instead of
+  the owner dashboard. The Modules tab is hidden for workers via Expo Router's
+  `href: null`.
+- **Offline-first capture** — `src/lib/offline-queue.ts` (native) +
+  `offline-queue.web.ts` (web stub) with NetInfo-driven background sync.
+  Every capture POST carries `Idempotency-Key`.
+- **Modules tab** — universal `(tabs)/modules.tsx` lists 12 core modules
+  (Incidents, Workers, Docs, Inductions, Safety, Risks, Reports, Inbox,
+  Automations, Regulator pipeline, API keys, Add-ons) + 13 industry-specific
+  modules (food safety, allergens, fleet, fatigue, pre-trip, care minutes,
+  AHPRA, SIRS, lone worker, store incidents, SWMS library, TradeCheck).
+  Generic `/module/[slug]` browser fetches the appropriate list endpoint and
+  links out to the web app for full CRUD.
+- **Industry switcher pill** — header chip on the Home screen, opens a
+  bottom sheet, calls `PATCH /api/auth/me/industry`. Hidden when the user
+  only has one industry.
+- **Accessibility sheet** — bottom-left FAB → modal with font scale, high
+  contrast, reduce motion, dyslexia font, emphasize links. Persists locally
+  and POSTs to `/api/accessibility/preferences`.
+- **Floating concierge FAB** — bottom-right `TALK TO ME` chip on every
+  customer screen, opens `/chat`. Lead-capture sheet auto-opens when the
+  backend returns `offer_lead_capture: true`, POSTs to `/api/concierge/lead`.
+- **60s notifications polling** — `useNotificationPolling()` hook drives the
+  unread-count badge on the Home header bell.
+- **`Idempotency-Key` header** added to the API client (used on every queued
+  capture).
+
+## 6. Known external dependency
 
 The external SafeBase preview at `safe-systems.preview.emergentagent.com` was
 returning HTTP 404 on `/api/*` at build time. The mobile app fails-soft (all
-errors surfaced to the user) and will start working end-to-end the moment
-that preview is woken.
-
-## 8. Iteration history
-
-### Iter1 — MVP shipped (Feb 25 2026)
-- Auth flow (login / register / forgot-password / Google sign-in)
-- 5 bottom tabs (Home / Capture / Inbox / Concierge / Profile)
-- Industry-aware home dashboard with live `IndustryAlertTile` and inline
-  actions
-- Compliance-score card + quick-capture grid (industry-specific)
-- 6 capture flows (lone-worker, pre-trip, fitness-for-duty, temperature log,
-  incident report, SWMS sign-on)
-- Notifications inbox with deep-linking
-- Concierge chat with persistent `session_id`
-- Profile with industry switcher and sign-out
-- Expo push registration wired to `/api/device-tokens/register`
-- All test-IDs in place for QA automation
+errors surfaced to the user). The moment the preview is woken, all
+endpoints — auth, dashboard widgets, modules, inline actions, concierge,
+admin — start responding.

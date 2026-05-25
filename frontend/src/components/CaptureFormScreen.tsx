@@ -13,9 +13,9 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { api } from "@/src/api/client";
 import { Eyebrow, Input, PrimaryButton } from "@/src/components/ui";
 import { useAuth } from "@/src/context/AuthContext";
+import { enqueueCapture } from "@/src/lib/offline-queue";
 import { accentFor, COLORS } from "@/src/theme/colors";
 
 export type FieldType = "text" | "longtext" | "number" | "select" | "boolean";
@@ -77,10 +77,14 @@ export function CaptureFormScreen(props: CaptureFormScreenProps) {
     setSubmitting(true);
     try {
       const body = props.transform ? props.transform(values, user) : values;
-      await api.post(props.endpoint, body);
+      // Offline-first: every capture writes to local SQLite + replays on reconnect
+      // with an Idempotency-Key. If we're online right now, sync happens inline.
+      const result = await enqueueCapture(props.endpoint, body);
       Alert.alert(
-        "Submitted",
-        props.successMessage ?? "Your capture has been logged to SafeBase.",
+        result.syncedOnline ? "Submitted" : "Saved",
+        result.syncedOnline
+          ? props.successMessage ?? "Your capture has been logged to SafeBase."
+          : "You're offline. We'll sync this to SafeBase the moment your connection is back.",
         [{ text: "OK", onPress: () => router.back() }],
       );
     } catch (e: any) {

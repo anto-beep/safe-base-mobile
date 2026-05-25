@@ -1,9 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Image } from "expo-image";
 import * as Linking from "expo-linking";
 import { router } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Alert,
   ImageBackground,
@@ -17,21 +16,42 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { Logo } from "@/src/components/Logo";
 import { Eyebrow, Input, PrimaryButton, SecondaryButton } from "@/src/components/ui";
 import { useAuth } from "@/src/context/AuthContext";
+import { biometricCapability, isBiometricEnabled, unlockWithBiometric } from "@/src/hooks/useBiometric";
 import { COLORS } from "@/src/theme/colors";
 
 const BG_URL =
   "https://static.prod-images.emergentagent.com/jobs/a57af9a8-0335-40f6-97fa-83b3bf0ccb34/images/e2639357d86dc06451309c2a23ef4c6923fefafaaf402b431bee8c616f961842.png";
-const LOGO_URL =
-  "https://static.prod-images.emergentagent.com/jobs/a57af9a8-0335-40f6-97fa-83b3bf0ccb34/images/c702745f1f1cc63d7a12ca70af438f9155de31bf6dced284a1292e2f66f65406.png";
 
 export default function Login() {
-  const { login, loginWithEmergentSession, loading } = useAuth();
+  const { login, loginWithEmergentSession, loading, refresh } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [googleBusy, setGoogleBusy] = useState(false);
+  const [bioAvailable, setBioAvailable] = useState<{ available: boolean; enabled: boolean; type: string }>({
+    available: false,
+    enabled: false,
+    type: "none",
+  });
+
+  useEffect(() => {
+    (async () => {
+      const cap = await biometricCapability();
+      const enabled = await isBiometricEnabled();
+      setBioAvailable({ available: cap.available && cap.enrolled, enabled, type: cap.type });
+      // If biometric is already enabled, auto-prompt on mount.
+      if (cap.available && cap.enrolled && enabled) {
+        const r = await unlockWithBiometric();
+        if (r.ok) {
+          await refresh();
+          router.replace("/(tabs)");
+        }
+      }
+    })();
+  }, [refresh]);
 
   const handleSubmit = async () => {
     setError(null);
@@ -61,7 +81,6 @@ export default function Login() {
       const parsed = Linking.parse(result.url);
       const sessionId =
         (parsed.queryParams?.session_id as string | undefined) ??
-        // Hash fragments may land in url.fragment via parse — fall back manual.
         (() => {
           const hash = result.url.split("#")[1] ?? "";
           const params = new URLSearchParams(hash);
@@ -75,8 +94,6 @@ export default function Login() {
       await loginWithEmergentSession(sessionId);
       router.replace("/(tabs)");
     } catch (e: any) {
-      // /api/auth/google-session on the external SafeBase backend may not
-      // accept the Emergent session shape — surface the error clearly.
       const msg = e?.detail ?? e?.message ?? "Google sign-in failed.";
       Alert.alert("Google sign-in", msg);
       setError(msg);
@@ -84,6 +101,18 @@ export default function Login() {
       setGoogleBusy(false);
     }
   };
+
+  const handleBiometric = async () => {
+    const r = await unlockWithBiometric();
+    if (r.ok) {
+      await refresh();
+      router.replace("/(tabs)");
+    } else if (r.reason) {
+      setError(r.reason);
+    }
+  };
+
+  const bioLabel = bioAvailable.type === "face" ? "Face ID" : "Biometric";
 
   return (
     <ImageBackground source={{ uri: BG_URL }} style={styles.bg} resizeMode="cover">
@@ -95,8 +124,9 @@ export default function Login() {
         >
           <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
             <View style={styles.header}>
-              <Image source={{ uri: LOGO_URL }} style={styles.logo} contentFit="contain" />
-              <Eyebrow color={COLORS.warning}>SafeBase</Eyebrow>
+              <Logo size={32} showWordmark />
+              <View style={{ height: 18 }} />
+              <Eyebrow color={COLORS.warning}>Sign in</Eyebrow>
               <Text style={styles.title}>Every Industry.{"\n"}Every Obligation.{"\n"}One Platform.</Text>
               <Text style={styles.subtitle}>
                 Sign in to your SafeBase workspace to log captures, action alerts and stay regulator-ready.
@@ -150,6 +180,18 @@ export default function Login() {
                 disabled={googleBusy}
               />
 
+              {bioAvailable.available && bioAvailable.enabled ? (
+                <>
+                  <View style={{ height: 12 }} />
+                  <SecondaryButton
+                    testID="login-biometric-button"
+                    label={`Unlock with ${bioLabel}`}
+                    onPress={handleBiometric}
+                    iconName={bioAvailable.type === "face" ? "scan-outline" : "finger-print-outline"}
+                  />
+                </>
+              ) : null}
+
               <TouchableOpacity
                 testID="login-forgot-link"
                 onPress={() => router.push("/forgot-password")}
@@ -169,22 +211,22 @@ export default function Login() {
                 </TouchableOpacity>
               </View>
 
-              <View style={styles.demoBox}>
-                <Eyebrow color={COLORS.textMuted}>Demo accounts</Eyebrow>
-                <Text style={styles.demoText}>trades.demo@safebase.com.au · Demo@1234</Text>
-                <Text style={styles.demoText}>hospitality.demo@safebase.com.au · Demo@1234</Text>
-                <Text style={styles.demoText}>transport.demo@safebase.com.au · Demo@1234</Text>
-                <Text style={styles.demoText}>healthcare.demo@safebase.com.au · Demo@1234</Text>
-                <Text style={styles.demoText}>retail.demo@safebase.com.au · Demo@1234</Text>
-              </View>
+              <TouchableOpacity
+                testID="login-admin-link"
+                onPress={() => router.push("/admin-login")}
+                style={styles.adminLink}
+              >
+                <Ionicons name="lock-closed-outline" size={14} color={COLORS.textMuted} />
+                <Text style={[styles.bottomText, { color: COLORS.textMuted, marginLeft: 6, fontSize: 12 }]}>
+                  SafeBase staff sign-in
+                </Text>
+              </TouchableOpacity>
             </View>
-
-            <View style={{ height: 32 }} />
 
             <View style={styles.footer}>
               <View style={styles.dot} />
               <Text style={styles.footerText}>
-                Pointing at: {(process.env.EXPO_PUBLIC_SAFEBASE_API ?? "safebase backend").replace(/^https?:\/\//, "")}
+                {(process.env.EXPO_PUBLIC_SAFEBASE_API ?? "safebase backend").replace(/^https?:\/\//, "")}
               </Text>
             </View>
           </ScrollView>
@@ -199,42 +241,24 @@ const styles = StyleSheet.create({
   overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: COLORS.overlay },
   content: { padding: 24, paddingTop: 24 },
   header: { marginBottom: 24 },
-  logo: { width: 48, height: 48, marginBottom: 18 },
   title: {
     color: COLORS.textPrimary,
-    fontSize: 30,
+    fontSize: 28,
     fontWeight: "800",
-    lineHeight: 36,
+    lineHeight: 34,
     letterSpacing: -0.6,
     marginTop: 6,
   },
-  subtitle: {
-    color: COLORS.textSecondary,
-    fontSize: 14,
-    lineHeight: 20,
-    marginTop: 12,
-  },
-  form: {
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    padding: 18,
-  },
+  subtitle: { color: COLORS.textSecondary, fontSize: 14, lineHeight: 20, marginTop: 12 },
+  form: { backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, padding: 18 },
   error: { color: COLORS.error, fontSize: 14, marginBottom: 10 },
   linkRow: { paddingVertical: 12, alignItems: "center" },
   linkText: { color: COLORS.textSecondary, fontSize: 13, textDecorationLine: "underline" },
   divider: { height: 1, backgroundColor: COLORS.border, marginVertical: 6 },
   bottomRow: { flexDirection: "row", justifyContent: "center", paddingTop: 12 },
   bottomText: { color: COLORS.textSecondary, fontSize: 14 },
-  demoBox: {
-    marginTop: 18,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    padding: 12,
-    backgroundColor: COLORS.appBg,
-  },
-  demoText: { color: COLORS.textMuted, fontSize: 11, fontFamily: Platform.select({ ios: "Menlo", default: "monospace" }), marginTop: 4 },
-  footer: { flexDirection: "row", alignItems: "center", justifyContent: "center" },
+  adminLink: { flexDirection: "row", justifyContent: "center", alignItems: "center", paddingTop: 18 },
+  footer: { flexDirection: "row", alignItems: "center", justifyContent: "center", paddingTop: 32 },
   dot: { width: 6, height: 6, backgroundColor: COLORS.success, marginRight: 8 },
   footerText: { color: COLORS.textMuted, fontSize: 11 },
 });
