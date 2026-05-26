@@ -141,6 +141,7 @@ export default function IncidentDetail() {
         <StageCard
           title="Triage"
           accent={accent}
+          ctaTestID="stage-cta-triage"
           completed={doc.stages_done?.includes("triage") || doc.stage !== "reported"}
           isCurrent={doc.stage === "triage"}
           ctaLabel={doc.stage === "reported" ? "Start triage" : "Edit triage"}
@@ -156,6 +157,7 @@ export default function IncidentDetail() {
         <StageCard
           title="Investigation"
           accent={accent}
+          ctaTestID="stage-cta-investigation"
           completed={doc.stages_done?.includes("investigation")}
           isCurrent={doc.stage === "investigation"}
           ctaLabel={doc.stage === "investigation" ? "Continue investigation" : "Open investigation"}
@@ -170,6 +172,7 @@ export default function IncidentDetail() {
         <StageCard
           title="Corrective actions"
           accent={accent}
+          ctaTestID="stage-cta-actions"
           completed={doc.stages_done?.includes("actions")}
           isCurrent={doc.stage === "actions"}
           ctaLabel={doc.stage === "actions" ? "Continue actions" : "Open actions"}
@@ -185,6 +188,7 @@ export default function IncidentDetail() {
         <StageCard
           title="Close-out"
           accent={accent}
+          ctaTestID="stage-cta-close-out"
           completed={doc.stage === "closed"}
           isCurrent={false}
           ctaLabel={doc.stage === "closed" ? "Re-open" : "Close out"}
@@ -223,7 +227,7 @@ function KV({ label, value, multiline }: { label: string; value: string; multili
   );
 }
 
-function StageCard({ title, accent, completed, isCurrent, ctaLabel, onCta, disabled, children }: { title: string; accent: string; completed?: boolean; isCurrent?: boolean; ctaLabel: string; onCta: () => void; disabled?: boolean; children: React.ReactNode; }) {
+function StageCard({ title, accent, completed, isCurrent, ctaLabel, onCta, disabled, ctaTestID, children }: { title: string; accent: string; completed?: boolean; isCurrent?: boolean; ctaLabel: string; onCta: () => void; disabled?: boolean; ctaTestID: string; children: React.ReactNode; }) {
   return (
     <Card>
       <View style={styles.stageHeader}>
@@ -235,7 +239,7 @@ function StageCard({ title, accent, completed, isCurrent, ctaLabel, onCta, disab
       {disabled ? (
         <Text style={styles.gated}>Complete the previous stage to unlock.</Text>
       ) : (
-        <PrimaryButton testID={`stage-cta-${title.toLowerCase().replace(/[^a-z]/g, "-")}`} label={ctaLabel} onPress={onCta} accent={accent} iconName="arrow-forward" />
+        <PrimaryButton testID={ctaTestID} label={ctaLabel} onPress={onCta} accent={accent} iconName="arrow-forward" />
       )}
     </Card>
   );
