@@ -1,0 +1,36 @@
+{
+  "summary": "Iteration_9 RE-VERIFY of iteration_8 fixes. ALL 7 fixes pass live against trades.demo and hospitality.demo logins. FIX1 /addons/api-keys: page renders without red-screen, toggling 'CREATE KEY' opens the form with the 'Integration target' chip group populated ('generic' chip visible) and no '... is not a function' error. FIX2 /library/documents, /library/policies, /library/forms all render the correct titles ('Document library' / 'Policy library' / 'Form library') with 'Open on web' button (testIDs lib-documents-open, lib-policies-open, lib-forms-open present); no 'Process library' default leak. FIX3 /safety/swms renders the friendly 'Available on web' Card (testID safety-swms-open present); no 'Unknown safety module' backend body and no Inspections chrome leak. /safety/inspections still mounts the IndustryListShell with title 'Inspections' and the Site/Vehicle subtitle. FIX4 /addons/tradecheck no longer prints 'of undefined' — when stats.total is missing the subtitle falls back to 'Verified credentials marketplace.' FIX5 /hospitality/temperature-logs opened by trades.demo surfaces the friendly 'You don't have access to this feature on this account.' card; the raw 'Request failed (403)' / 'Not authenticated' / 'Not authorized for this feature' strings are no longer present. FIX6 /capture for trades.demo and hospitality.demo both render the 'Other industries' section with 4 LockedTile cards (testIDs capture-locked-{trades|hospitality|transport|healthcare|retail} all present for the other-4 industries each). FIX7 /settings/onboarding mounts without an 'api.put is not a function' runtime error; api.put method is now exposed in src/api/client.ts. REGRESSION: trades amber #FFA630 confirmed visually on Capture chrome; hospitality #E11D48 visible on Capture eyebrow; admin warning #FFCC00 unchanged (no edits to that screen); industry-switcher testID present at app/(tabs)/profile.tsx:110; expo-notifications web warning is the only console warning (carry-over, NA). Hospitality.demo login (flaked in iter 8) succeeded cleanly this run — landed on home, /capture and /hospitality/temperature-logs both mount without red-screen. No new red-screen crashes seen on any tested route.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": [
+      {"component": "expo-notifications", "issue": "Carry-over web-only warning '[expo-notifications] Listening to push token changes is not yet fully supported on web.' — emitted on every page load. NA for native build. Reference: src/lib/push.ts via app/_layout.tsx."},
+      {"component": "react-navigation internal", "issue": "Carry-over 'props.pointerEvents is deprecated. Use style.pointerEvents' warning — emitted by react-navigation/ResourceSavingView, not by our code. Will resolve on a future react-navigation upgrade."}
+    ]
+  },
+  "test_report_links": ["/app/test_reports/iteration_9.json", "/app/test_reports/iteration_8.json"],
+  "action_items": [
+    "None — all 7 iteration_8 fixes verified GREEN. Safe to close iteration_8 issues."
+  ],
+  "critical_code_review_comments": [
+    "app/addons/api-keys.tsx:28 — Array.isArray guard on both rows and targets is correct; fallback to ['generic'] preserved.",
+    "app/library/[type].tsx:14-23 — META expanded for documents/policies/forms/templates; the prettify() fallback at 25-27 cleanly handles unmapped slugs (title becomes '<Type> library', body interpolates pretty-cased noun).",
+    "app/safety/[module].tsx:64-110 — hooks declared at the top before the early return preserves Rules of Hooks (load callback guards on !cfg). Friendly fallback card is testID-stable (safety-${moduleKey}-open).",
+    "app/addons/tradecheck.tsx:39 — typeof stats.total === 'number' guard is correct; copy falls back to the marketplace tagline when total is missing.",
+    "src/api/client.ts:53-58 — preferFriendly precedence for 401/403/5xx is correct; backendDetail still wins for 404 record-not-found and other contextual statuses, preserving 404 nuance.",
+    "app/(tabs)/capture.tsx:76-112 — OTHER_INDUSTRIES list correctly filters out the user's own industry; LockedTile grid mirrors the Modules-tab pattern; testID 'capture-locked-{industry}' is stable.",
+    "src/api/client.ts:144-145 — api.put method now exposed alongside get/post/patch/del."
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "100% — POST /api/auth/login 200 for trades.demo and hospitality.demo; cross-industry calls correctly return 403 which the client now translates to the friendly copy.",
+    "frontend": "100% on the 7 targeted fixes + regression sweep. No red-screen crashes on any tested route. Hospitality.demo login (iter 8 flake) succeeded this run."
+  },
+  "seed_data_creation": "None — only GET requests and one cross-industry probe (which 403'd as expected).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iteration_9 closes out iteration_8. All 7 high/medium issues are verified fixed in live preview. Test credentials are in /app/memory/test_credentials.md (trades.demo / hospitality.demo / transport.demo / healthcare.demo / retail.demo @ safebase.com.au / Demo@1234; admin@safebase.internal / AdminDemo@1234). The api-keys form is collapsed by default — click the 'CREATE KEY' toggle to expose the chip group + key-label + key-create testIDs. The friendly 403 copy now wins over the backend detail for 401/403/5xx; 404 still uses the backend detail (intentional — distinguishes record-not-found from pod-offline). On Capture, locked tiles use the testID pattern 'capture-locked-{trades|hospitality|transport|healthcare|retail}'. industry-switcher testID lives on /profile (not on home). expo-notifications + react-navigation pointerEvents warnings remain as harmless carry-overs.",
+  "rca_of_issue": "Not applicable — re-verification iteration only. All 7 RCAs from iteration_8 are resolved: (1) Array.isArray guard added to ApiKeysApi.targets; (2) META expanded with documents/policies/forms/templates + prettify() fallback; (3) friendly 'Available on web' card replaces silent CONFIG.inspections fallback (hooks moved above the early return); (4) typeof stats.total === 'number' guard added; (5) preferFriendly precedence flipped for 401/403/5xx; (6) Capture mirrors Modules with LockedTile grid for non-owned industries; (7) api.put method added to the api wrapper."
+}

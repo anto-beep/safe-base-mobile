@@ -45,7 +45,14 @@ function makeError(status: number, payload: any, fallback: string): ApiError {
   const backendDetail =
     (payload && typeof payload === "object" && (payload.detail || payload.message)) || null;
 
+  // For auth/session/permission errors and 5xx we ALWAYS prefer the friendly
+  // copy — FastAPI's default details (e.g. "Not authenticated", "Not
+  // authorized for this feature") are too generic for end-users. For 404
+  // (record-not-found vs pod-offline) and other statuses we prefer the
+  // backend's contextual detail when present.
+  const preferFriendly = status === 401 || status === 403 || status >= 500;
   const detail =
+    (preferFriendly && friendly) ||
     backendDetail ||
     friendly ||
     fallback;
@@ -134,6 +141,8 @@ export const api = {
     apiRequest<T>(path, { ...opts, method: "POST", body }),
   patch: <T = any>(path: string, body?: any, opts: Omit<RequestOpts, "method" | "body"> = {}) =>
     apiRequest<T>(path, { ...opts, method: "PATCH", body }),
+  put: <T = any>(path: string, body?: any, opts: Omit<RequestOpts, "method" | "body"> = {}) =>
+    apiRequest<T>(path, { ...opts, method: "PUT", body }),
   del: <T = any>(path: string, opts: Omit<RequestOpts, "method" | "body"> = {}) =>
     apiRequest<T>(path, { ...opts, method: "DELETE" }),
 };

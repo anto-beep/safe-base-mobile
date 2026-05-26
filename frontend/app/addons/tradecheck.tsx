@@ -36,7 +36,7 @@ export default function TradeCheckScreen() {
     <SafeAreaView style={s.safe} edges={["top"]}>
       <ScrollView contentContainerStyle={s.content}>
         <TouchableOpacity onPress={() => router.back()} style={s.back}><Ionicons name="chevron-back" size={22} color={COLORS.textSecondary} /></TouchableOpacity>
-        <ScreenHeader eyebrow="Add-on" title="TradeCheck / VenueCheck" subtitle={stats ? `${stats.verified_count} of ${stats.total} businesses verified.` : "Verified credentials marketplace."} accent={accent} />
+        <ScreenHeader eyebrow="Add-on" title="TradeCheck / VenueCheck" subtitle={stats && typeof stats.total === "number" ? `${stats.verified_count ?? 0} of ${stats.total} businesses verified.` : "Verified credentials marketplace."} accent={accent} />
         {my ? (
           <Card>
             <Eyebrow color={accent}>Your listing</Eyebrow>

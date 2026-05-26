@@ -9,6 +9,7 @@ import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-nati
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Eyebrow, ScreenHeader } from "@/src/components/ui";
+import { LockedTile } from "@/src/components/LockedTile";
 import { useAuth } from "@/src/context/AuthContext";
 import { accentFor, COLORS, INDUSTRY_LABEL, Industry, TOKENS } from "@/src/theme/colors";
 
@@ -70,6 +71,11 @@ export default function Capture() {
   const accent = accentFor(industry);
   const tiles = CAPTURES_BY_INDUSTRY[industry] ?? [];
 
+  // Other industries (parity with Modules sidebar) — surfaced as locked tiles
+  // so the user can clearly see what their plan would unlock by upgrading.
+  const OTHER_INDUSTRIES: Industry[] = (["trades", "hospitality", "transport", "healthcare", "retail"] as Industry[])
+    .filter((k) => k !== industry);
+
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -88,6 +94,23 @@ export default function Capture() {
         ) : tiles.map((c) => (
           <CaptureRow key={c.id} item={c} accent={accent} onPress={() => router.push(c.href as any)} />
         ))}
+
+        <View style={{ height: 18 }} />
+        <Eyebrow color={COLORS.textMuted}>Other industries</Eyebrow>
+        <Text style={styles.lockedHint}>Capture flows for the other SafeBase industries you can add to your plan.</Text>
+        <View style={styles.lockedGrid}>
+          {OTHER_INDUSTRIES.map((ind) => (
+            <LockedTile
+              key={ind}
+              testID={`capture-locked-${ind}`}
+              label={INDUSTRY_LABEL[ind]}
+              sub={`${(CAPTURES_BY_INDUSTRY[ind] ?? []).length} capture flows`}
+              icon="lock-closed-outline"
+              href="/module/addons"
+            />
+          ))}
+        </View>
+
         <View style={{ height: 60 }} />
       </ScrollView>
     </SafeAreaView>
@@ -145,4 +168,6 @@ const styles = StyleSheet.create({
   rowSub: { color: COLORS.textMuted, fontSize: 12, marginTop: 2 },
   emptyBox: { padding: 18, borderWidth: 1, borderColor: TOKENS.border, marginTop: 8 },
   emptyText: { color: COLORS.textMuted, fontSize: 13 },
+  lockedHint: { color: COLORS.textMuted, fontSize: 12, marginTop: 4, marginBottom: 8 },
+  lockedGrid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -6 },
 });

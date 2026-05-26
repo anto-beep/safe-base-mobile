@@ -1,13 +1,14 @@
 // Phase 1G · Generic Safety stack screen. Backed by /safety/{module}.
 // Modules: inspections / first_aid / ppe / plant / substances / toolbox_talks.
 import React, { useCallback, useState } from "react";
-import { useFocusEffect, useLocalSearchParams } from "expo-router";
-import { Alert, Text, TouchableOpacity, View } from "react-native";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { Alert, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { SafetyApi, type SafetyModule } from "@/src/api/safebase";
 import { IndustryListShell, shellStyles } from "@/src/components/IndustryListShell";
-import { Input, MONO, PrimaryButton } from "@/src/components/ui";
+import { Card, Eyebrow, Input, MONO, PrimaryButton, ScreenHeader } from "@/src/components/ui";
 import { TOKENS, COLORS, useAccent } from "@/src/theme/colors";
 
 interface ModuleConfig { eyebrow: string; title: string; subtitle: string; icon: keyof typeof Ionicons.glyphMap; fields: { key: string; label: string; placeholder?: string; multiline?: boolean; required?: boolean }[]; }
@@ -53,10 +54,14 @@ const CONFIG: Record<string, ModuleConfig> = {
 
 export default function SafetyModuleScreen() {
   const accent = useAccent();
+  const router = useRouter();
   const { module: rawModule } = useLocalSearchParams<{ module: string }>();
-  const moduleKey = (rawModule ?? "inspections") as SafetyModule;
-  const cfg = CONFIG[moduleKey] ?? CONFIG.inspections;
+  const moduleKey = String(rawModule ?? "inspections");
+  const cfg = CONFIG[moduleKey];
+  const moduleKeyTyped = moduleKey as SafetyModule;
 
+  // Hooks always declared (Rules of Hooks). Skipped inside callbacks when cfg
+  // is undefined (unmapped slug → friendly "open on web" fallback below).
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -68,24 +73,53 @@ export default function SafetyModuleScreen() {
   const [fe, setFe] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    if (!cfg) { setLoading(false); return; }
     setError(null);
-    try { const r = await SafetyApi.list(moduleKey); setRows(Array.isArray(r) ? r : []); }
+    try { const r = await SafetyApi.list(moduleKeyTyped); setRows(Array.isArray(r) ? r : []); }
     catch (e: any) { setError(e?.detail ?? `Could not load ${cfg.title}.`); }
     finally { setLoading(false); setRefreshing(false); }
-  }, [moduleKey]);
+  }, [moduleKeyTyped, cfg]);
   useFocusEffect(useCallback(() => { setLoading(true); load(); }, [load]));
+
+  // ---- unmapped slug: friendly fallback ----
+  if (!cfg) {
+    const pretty = moduleKey.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+    return (
+      <SafeAreaView style={fallbackStyles.safe} edges={["top"]}>
+        <ScrollView contentContainerStyle={fallbackStyles.content}>
+          <TouchableOpacity onPress={() => router.back()} style={fallbackStyles.back}>
+            <Ionicons name="chevron-back" size={22} color={COLORS.textSecondary} />
+          </TouchableOpacity>
+          <ScreenHeader eyebrow="Safety" title={pretty} subtitle={`Manage your ${pretty.toLowerCase()} on SafeBase web.`} accent={accent} />
+          <Card>
+            <Eyebrow color={accent}>Available on web</Eyebrow>
+            <Text style={fallbackStyles.body}>
+              The {pretty.toLowerCase()} module isn't available on mobile yet. Tap below to manage it on SafeBase web — entries you create there appear in your mobile dashboard, reports and notifications.
+            </Text>
+            <PrimaryButton
+              testID={`safety-${moduleKey}-open`}
+              label="Open on web"
+              onPress={() => Linking.openURL(`https://safe-systems.preview.emergentagent.com/dashboard/safety/${moduleKey}`).catch(() => {})}
+              accent={accent}
+              iconName="open-outline"
+            />
+          </Card>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
 
   const save = async () => {
     setFe(null);
     for (const f of cfg.fields) if (f.required && !(form[f.key] ?? "").trim()) { setFe(`${f.label} is required.`); return; }
     setBusy(true);
-    try { await SafetyApi.create(moduleKey, form); setForm({}); setOpen(false); load(); }
+    try { await SafetyApi.create(moduleKeyTyped, form); setForm({}); setOpen(false); load(); }
     catch (e: any) { setFe(e?.detail ?? "Could not save."); }
     finally { setBusy(false); }
   };
 
   const remove = async (id: string) => {
-    try { await SafetyApi.remove(moduleKey, id); load(); }
+    try { await SafetyApi.remove(moduleKeyTyped, id); load(); }
     catch (e: any) { Alert.alert("Delete failed", e?.detail ?? ""); }
   };
 
@@ -141,3 +175,10 @@ export default function SafetyModuleScreen() {
     />
   );
 }
+
+const fallbackStyles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: TOKENS.background },
+  content: { padding: 20, paddingBottom: 40 },
+  back: { padding: 4, marginBottom: 6 },
+  body: { color: COLORS.textSecondary, fontSize: 14, lineHeight: 20, marginVertical: 12 },
+});

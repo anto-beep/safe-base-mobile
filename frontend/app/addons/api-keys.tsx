@@ -25,7 +25,7 @@ export default function ApiKeysScreen() {
 
   const load = useCallback(async () => {
     setError(null);
-    try { const [r, t] = await Promise.all([ApiKeysApi.list(), ApiKeysApi.targets().catch(() => ["generic"])]); setRows(Array.isArray(r) ? r : []); setTargets(t); }
+    try { const [r, t] = await Promise.all([ApiKeysApi.list(), ApiKeysApi.targets().catch(() => ["generic"])]); setRows(Array.isArray(r) ? r : []); setTargets(Array.isArray(t) ? t : ["generic"]); }
     catch (e: any) { setError(e?.detail ?? "Could not load API keys."); }
     finally { setLoading(false); setRefreshing(false); }
   }, []);
