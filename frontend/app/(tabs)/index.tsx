@@ -46,23 +46,25 @@ export default function Home() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
-      <View style={[styles.headerBar, { backgroundColor: TOKENS.ink, borderBottomColor: TOKENS.ink }]}>
-        <Logo size={26} showWordmark invert testID="home-logo" />
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+      {/* Slim header bar — industry switcher + notifications bell. The
+          SAFEBASE wordmark used to live here but was removed per design:
+          the logged-in surface is industry-led, not brand-led. */}
+      <View style={styles.headerBar}>
+        <View style={{ flex: 1 }}>
           <IndustrySwitcher />
-          <TouchableOpacity
-            testID="home-notifications-shortcut"
-            style={[styles.bellWrap, { borderColor: "#FFFFFF22" }]}
-            onPress={() => router.push("/notifications")}
-          >
-            <Ionicons name="notifications-outline" size={22} color="#FFFFFF" />
-            {unreadCount > 0 ? (
-              <View style={[styles.badge, { backgroundColor: accent }]} testID="home-unread-badge">
-                <Text style={styles.badgeText}>{unreadCount > 99 ? "99+" : String(unreadCount)}</Text>
-              </View>
-            ) : null}
-          </TouchableOpacity>
         </View>
+        <TouchableOpacity
+          testID="home-notifications-shortcut"
+          style={[styles.bellWrap, { borderColor: COLORS.border }]}
+          onPress={() => router.push("/notifications")}
+        >
+          <Ionicons name="notifications-outline" size={22} color={COLORS.textPrimary} />
+          {unreadCount > 0 ? (
+            <View style={[styles.badge, { backgroundColor: accent }]} testID="home-unread-badge">
+              <Text style={styles.badgeText}>{unreadCount > 99 ? "99+" : String(unreadCount)}</Text>
+            </View>
+          ) : null}
+        </TouchableOpacity>
       </View>
 
       {isWorker ? <WorkerHome accent={accent} /> : <OwnerHome accent={accent} industry={industry} />}
@@ -344,15 +346,7 @@ const QUICK_ACTIONS: Record<Industry, { id: string; title: string; sub: string; 
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.appBg },
-  headerBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
+  headerBar: { flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingVertical: 10, gap: 10, borderBottomWidth: 1, borderBottomColor: COLORS.border, backgroundColor: COLORS.background },
   content: { padding: 20 },
   greeting: { color: COLORS.textPrimary, fontSize: 26, fontWeight: "800", letterSpacing: -0.4, marginTop: 6 },
   tagline: { color: COLORS.textSecondary, fontSize: 14, marginTop: 4 },

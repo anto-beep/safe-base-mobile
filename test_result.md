@@ -329,7 +329,90 @@ agent_communication:
 
   - agent: "main"
     message: |
-      PHASE 1C delivered: 5 industry Owner Home dashboards via a single
+      PHASE 1D (canonical per-industry screens) delivered + home
+      redesign per user spec.
+
+      DESIGN CHANGE
+        - app/(tabs)/index.tsx — Removed the SAFEBASE wordmark / ink
+          headerBar. The logged-in surface is now industry-led: slim
+          neutral header bar holding only the IndustrySwitcher + a
+          notifications bell with unread badge.
+
+      CANONICAL INDUSTRY SCREENS (4 net-new, full create-entry parity
+      with the web; PERMISSIONS = backend-enforced, mobile surfaces
+      friendly 403 message so users see exactly what their web account
+      sees):
+
+        1. /app/hospitality/temperature-logs.tsx — TemperatureLog list +
+           stats + create form. Equipment + 8 equipment types (fridge /
+           coolroom / cold_display / freezer / bain_marie / hot_display /
+           hot_holding / dishwasher), temp °C input, taken-by, corrective
+           action (mandatory on FSANZ Std 3.2.2 breach). Local preview of
+           the cold ≤5 / frozen ≤-15 / hot ≥60 rule then server-authoritative
+           on save.
+        2. /app/transport/pretrip.tsx — Pre-trip inspection list + create.
+           NHVR-canonical 18-item checklist across 6 groups (Tyres / Lights /
+           Brakes / Load restraint / Fluids / Cabin & safety). Defaults
+           every item to PASS so the driver only taps defects. Computes
+           defects + fit_to_drive locally and on submit; server is
+           authoritative.
+        3. /app/healthcare/ahpra.tsx — AHPRA register list + create + Iter57
+           inline remind action (POST /api/healthcare/ahpra-register/{reg_id}/remind).
+           Profession chips (10 disciplines), registration type chips (5),
+           issued + expires dates, status pills (ACTIVE / EXPIRING / EXPIRED)
+           computed from the backend _days_to_expiry helper.
+        4. /app/retail/lone-worker.tsx — Active lone-worker shifts +
+           check-in form + Iter57 acknowledge action (POST /api/retail/lone-worker/{checkin_id}/acknowledge)
+           + escalate fallback. Wellbeing chips (OK / unwell / distressed),
+           interval chips (30 / 60 / 120 / 180 min). Overdue + escalation
+           tints render directly from backend _overdue / _should_escalate
+           flags.
+
+      Supporting:
+        - /src/api/industry.ts — typed wrappers for HospitalityApi /
+          TransportApi / HealthcareApi / RetailApi (with Iter57 actions
+          pauseDriver, remindAhpra, acknowledge, escalate).
+        - app/(tabs)/modules.tsx routeFor() — hospitality/temperature,
+          transport/pretrip, healthcare/ahpra, retail/lone-worker tiles
+          all jump to their native screens.
+
+      PERMISSIONS PARITY VERIFIED
+        Trades demo opening the 4 industry screens shows a clean 403
+        message rendered inside a Card (not a crash). Backend gates each
+        endpoint via require_feature. Users see exactly what their web
+        permissions allow.
+
+frontend_phase1d:
+  - task: "Home — remove SAFEBASE wordmark; slim industry header"
+    file: "app/(tabs)/index.tsx"
+    implemented: true
+    working: "NA"
+    priority: "high"
+    needs_retesting: true
+  - task: "Hospitality Temperature Logs (list + stats + create)"
+    file: "app/hospitality/temperature-logs.tsx, src/api/industry.ts"
+    implemented: true
+    working: "NA"
+    priority: "high"
+    needs_retesting: true
+  - task: "Transport Pre-trip inspection (18-item checklist + create)"
+    file: "app/transport/pretrip.tsx"
+    implemented: true
+    working: "NA"
+    priority: "high"
+    needs_retesting: true
+  - task: "Healthcare AHPRA register (list + create + Iter57 remind)"
+    file: "app/healthcare/ahpra.tsx"
+    implemented: true
+    working: "NA"
+    priority: "high"
+    needs_retesting: true
+  - task: "Retail Lone-worker shifts (active list + check-in + Iter57 acknowledge + escalate)"
+    file: "app/retail/lone-worker.tsx"
+    implemented: true
+    working: "NA"
+    priority: "high"
+    needs_retesting: true
       industry-agnostic OwnerHome component in app/(tabs)/index.tsx. Each
       industry rotates accent + pillars + alert tile dynamically through
       the live SafeBase endpoints — no per-industry code paths needed.

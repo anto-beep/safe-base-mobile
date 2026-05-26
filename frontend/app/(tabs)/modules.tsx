@@ -95,6 +95,11 @@ function routeFor(m: ModuleDef): string {
   if (m.slug === "reports") return "/reports";
   if (m.slug === "settings-business" || m.slug === "business") return "/settings/business";
   if (m.slug === "settings-notifications") return "/settings/notifications";
+  // Industry canonical screens (Phase 1D)
+  if (m.slug === "hospitality/temperature") return "/hospitality/temperature-logs";
+  if (m.slug === "transport/pretrip") return "/transport/pretrip";
+  if (m.slug === "healthcare/ahpra") return "/healthcare/ahpra";
+  if (m.slug === "retail/lone-worker") return "/retail/lone-worker";
   return `/module/${encodeURIComponent(m.slug)}`;
 }
 
