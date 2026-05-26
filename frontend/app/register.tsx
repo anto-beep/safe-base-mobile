@@ -165,7 +165,8 @@ export default function Register() {
             <Text style={styles.linkText}>
               Already have an account? <Text style={{ color: accent, fontWeight: "800" }}>Sign in</Text>
             </Text>
-          </TouchableOpacity>        </ScrollView>
+          </TouchableOpacity>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

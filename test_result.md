@@ -255,3 +255,39 @@ agent_communication:
       Native-only flows (biometric unlock, push notifications, native SQLite,
       Google OAuth via expo-auth-session) cannot be tested in the web preview —
       mark them NA / requires-native-build in your report rather than failing.
+
+  - agent: "testing"
+    message: |
+      Iteration 1 (frontend, web preview): 9/11 PASS, 1 NA, 1 deferred.
+      Issues found:
+        - HIGH: trades accent = #FFCC00 collides with admin warning yellow.
+                Should be #FFA630.
+        - MED:  stray text node between </TouchableOpacity> and </ScrollView>
+                in app/register.tsx ~line 168.
+        - MED:  industry switcher hidden when user has only one industry
+                (app/(tabs)/profile.tsx:30). Add testID, always render.
+        - LOW:  RN-web `props.pointerEvents` deprecation (lib-internal).
+
+  - agent: "main"
+    message: |
+      Iteration 1 fixes applied:
+        1. src/theme/colors.ts → trades accent now #FFA630, hospitality #E11D48
+           (hospitality was clashing with trades amber too).
+        2. app/register.tsx → whitespace text node removed.
+        3. app/(tabs)/profile.tsx → industry switcher row now always renders
+           (read-only style when canSwitch=false), wrapped with
+           testID="industry-switcher", section header shows "Active industry"
+           vs "Switch active industry".
+        4. LOW pointerEvents warning is from
+           react-navigation/ResourceSavingView (internal, not our code) — left
+           as-is.
+
+      Please re-run frontend tests focusing on:
+        - Customer trades login → home + profile → confirm accent is amber
+          #FFA630, NOT yellow.
+        - Profile screen `testID="industry-switcher"` renders.
+        - Register screen no longer surfaces "Unexpected text node" console
+          error.
+        - Iteration 2 should also cover the capture-form offline flush
+          (/capture/lone-worker-checkin) and the logout-from-Alert flow on web
+          (window.confirm → accept).

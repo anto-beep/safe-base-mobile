@@ -32,8 +32,8 @@ export const TOKENS = {
 
 // ─── Industry accents ───────────────────────────────────────────────
 export const INDUSTRY_ACCENT: Record<Industry, string> = {
-  trades: "#FFCC00",
-  hospitality: "#F59E0B",
+  trades: "#FFA630",
+  hospitality: "#E11D48",
   transport: "#0DC4B5",
   healthcare: "#2196A6",
   retail: "#A855F7",

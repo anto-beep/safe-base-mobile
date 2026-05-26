@@ -98,21 +98,33 @@ export default function Profile() {
           <KV label="Subscription" value={(user?.subscription_status ?? "trial").toUpperCase()} />
         </Card>
 
-        {canSwitch ? (
-          <Card>
-            <Eyebrow color={COLORS.textSecondary}>Switch active industry</Eyebrow>
+        <Card>
+          <View style={styles.sectionHeader}>
+            <Eyebrow color={COLORS.textSecondary}>
+              {canSwitch ? "Switch active industry" : "Active industry"}
+            </Eyebrow>
+            {!canSwitch ? (
+              <Text style={styles.sectionHint}>Single-industry workspace</Text>
+            ) : null}
+          </View>
+          <View testID="industry-switcher">
             {availableIndustries.map((i) => {
               const a = INDUSTRY_ACCENT[i];
               const active = i === activeIndustry;
+              const disabled = !canSwitch;
               return (
                 <TouchableOpacity
                   key={i}
                   testID={`profile-switch-${i}`}
-                  onPress={() => handleSwitch(i)}
-                  activeOpacity={0.85}
+                  onPress={() => (disabled ? null : handleSwitch(i))}
+                  activeOpacity={disabled ? 1 : 0.85}
                   style={[
                     styles.switchRow,
-                    { borderColor: active ? a : COLORS.border, backgroundColor: active ? `${a}1A` : "transparent" },
+                    {
+                      borderColor: active ? a : COLORS.border,
+                      backgroundColor: active ? `${a}1A` : "transparent",
+                      opacity: disabled ? 0.95 : 1,
+                    },
                   ]}
                 >
                   <View style={[styles.dot, { backgroundColor: a }]} />
@@ -123,8 +135,8 @@ export default function Profile() {
                 </TouchableOpacity>
               );
             })}
-          </Card>
-        ) : null}
+          </View>
+        </Card>
 
         <Card>
           <Eyebrow color={COLORS.textSecondary}>Security</Eyebrow>
@@ -207,6 +219,8 @@ const styles = StyleSheet.create({
   switchRow: { flexDirection: "row", alignItems: "center", borderWidth: 1, paddingVertical: 12, paddingHorizontal: 12, marginTop: 8 },
   dot: { width: 10, height: 10, marginRight: 12 },
   switchLabel: { flex: 1, fontSize: 15, fontWeight: "600" },
+  sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  sectionHint: { color: COLORS.textMuted, fontSize: 11, letterSpacing: 0.6, textTransform: "uppercase" },
   note: { color: COLORS.textSecondary, fontSize: 13, lineHeight: 20, marginTop: 8 },
   toggleRow: { flexDirection: "row", alignItems: "center", borderWidth: 1, paddingHorizontal: 14, paddingVertical: 14, marginTop: 8 },
   toggleLabel: { color: COLORS.textPrimary, fontSize: 15, fontWeight: "700" },

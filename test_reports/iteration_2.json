@@ -1,0 +1,72 @@
+{
+  "summary": "Iteration_2 frontend retest against http://localhost:3000 in mobile viewport 390x844 with live SafeBase backend. 6 of 8 PRD items PASS, 1 PARTIAL (admin), 1 FAIL (logout). Trades accent fix VERIFIED: home + profile + CTAs render in rgb(255,166,48) = #FFA630 (13 hits in DOM color frequency scan); visually distinct from the admin warning yellow rgb(255,204,0) = #FFCC00. Register 'Unexpected text node' RN-web error is GONE (0 hits across console). Profile screen now exposes testID='industry-switcher' for the single-industry trades demo user and displays the 'SINGLE-INDUSTRY WORKSPACE' hint with a Trades & Construction row + amber dot + checkmark. Capture form /capture/lone-worker-checkin submits cleanly via offline-queue.web.ts → no red-box error, no [data-testid=lone-worker-error] surfaced. Hospitality home accent VERIFIED #E11D48 (rgb(225,29,72), 12 hits). Pre-login authority blue #002FA7 confirmed on login, register, AND forgot-password (forgot button testID is 'forgot-submit', not 'forgot-submit-button'). Admin login button bg is #FFCC00 as expected. CRITICAL REGRESSION: tapping testID='profile-logout-button' does NOTHING on web — Alert.alert is a no-op in react-native-web and no Alert→window.confirm shim exists in the codebase, so the destructive 'Sign out' button never fires. The handoff note claims this was implemented; it is NOT. Same root cause means the Capture form success Alert ('Submitted' / 'Saved') also fails to call its OK→router.back() callback, so users are left staring at the filled form with no confirmation. RN-web 'props.pointerEvents is deprecated' warning (x6) still emitted by react-navigation internals (library-level, carried over from iter_1).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Profile screen — Sign-out button (app/(tabs)/profile.tsx:60-74)",
+        "issue": "Tapping testID='profile-logout-button' has no effect on web preview. Implementation calls Alert.alert('Sign out', ...) and routes the actual logout through the destructive button's onPress callback. React-native-web ships Alert.alert as a no-op (no native bridge, no window.confirm shim) so neither the confirm dialog nor the onPress→deregisterPush/disableBiometric/logout/router.replace('/login') chain ever runs. Result: URL stays at /profile and the user is stuck logged in. Iteration_2 handoff says 'Alert.alert → window.confirm' is implemented, but grep finds zero polyfill/shim/window.confirm references under /app/frontend/{src,app}. Recommend a small web shim like `if (Platform.OS === 'web') Alert.alert = (title, msg, buttons) => { const ok = window.confirm(`${title}\\n\\n${msg ?? ''}`); const destructive = buttons?.find(b => b.style === 'destructive') ?? buttons?.find(b => b.text !== 'Cancel'); if (ok && destructive?.onPress) destructive.onPress(); }` installed once in app/_layout.tsx (or src/lib/alert.web.ts via .web.ts resolution).",
+        "testID": "profile-logout-button",
+        "priority": "CRITICAL"
+      },
+      {
+        "component": "Capture screens — success Alert (src/components/CaptureFormScreen.tsx:83-89; also app/incident/new.tsx, app/risk/new.tsx, app/settings/*)",
+        "issue": "Same root cause as the logout bug. Successful submit calls `Alert.alert('Submitted', successMessage, [{ text: 'OK', onPress: () => router.back() }])` which never fires on web — no toast, no navigation, the form just clears its submitting state and stays on screen. Functionally the POST does fly (offline-queue.web.ts → apiRequest succeeds), but the user gets no acknowledgement and no way back except the in-screen Back chevron. Web-side Alert shim (see above) would fix every Alert.alert call site at once.",
+        "testID": "lone-worker-submit",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Profile → Sign out → /login",
+        "issue": "End-to-end logout flow is broken on web preview because Alert.alert is a no-op. Verified by clicking 'profile-logout-button' twice; page.url remained 'http://localhost:3000/profile' and no `dialog` event fired in Playwright.",
+        "affected_testIDs": ["profile-logout-button"]
+      },
+      {
+        "flow": "Capture submit → success acknowledgement → router.back()",
+        "issue": "Submit network call succeeds (no red box) but the success Alert never resolves its OK callback on web, so the form does not navigate back. Same Alert.alert root cause.",
+        "affected_testIDs": ["lone-worker-submit", "incident-submit", "risk-submit"]
+      }
+    ],
+    "design_issues": [
+      {
+        "screen": "Global — Pre-login + Profile",
+        "issues": [
+          "RN-web 'props.pointerEvents is deprecated. Use style.pointerEvents' still emits 6× during a normal navigation pass. As flagged in iter_1 the source is react-navigation internals — a library-level fix, not actionable inside this repo. Recommend pinning to a react-navigation version that has migrated or filing/upstreaming the bug; harmless functionally but pollutes the console for the next QA pass."
+        ]
+      }
+    ],
+    "react_native_issues": [
+      {
+        "component": "Alert (react-native-web)",
+        "issue": "react-native-web's Alert.alert is a no-op (no native modal, no window.confirm fallback). Any code that depends on a destructive button's onPress callback — sign out, capture submit success, incident-saved, risk-saved, settings 'Saved' — silently breaks on web. Reference: /app/frontend/app/(tabs)/profile.tsx:60-74 and /app/frontend/src/components/CaptureFormScreen.tsx:83-89. Fix: install a one-time web Alert shim in app/_layout.tsx (or create src/lib/alert.web.ts with a Platform.OS === 'web' override) that maps to window.confirm() and dispatches the destructive/OK button's onPress."
+      }
+    ]
+  },
+  "test_report_links": ["/app/test_reports/iteration_2.json", "/app/test_reports/iteration_1.json"],
+  "action_items": [
+    "CRITICAL: Implement a react-native-web Alert.alert → window.confirm shim so the Profile Sign-out destructive button actually logs the user out (also unblocks every other Alert.alert callback across the app — capture/incident/risk/settings). See suggested patch in frontend_issues.ui_bugs[0].",
+    "Re-verify the logout flow + capture-form acknowledgement once the Alert shim is in place; iteration_3 should confirm /profile → click Sign out → window.confirm → OK → redirect to /login, and /capture/lone-worker-checkin submit → 'Submitted' toast → router.back() to the Capture index.",
+    "(Carry-over) Migrate any in-repo pointerEvents prop usage to style.pointerEvents, or pin react-navigation to a version where this is fixed, to clear the 6× SDK 54 deprecation warning per pageview.",
+    "Note for QA: the forgot-password submit button's testID is `forgot-submit` (not `forgot-submit-button` as some other screens use). Either align the naming or document — currently inconsistent with `login-submit-button` / `register-submit-button` / `admin-login-submit-button`."
+  ],
+  "critical_code_review_comments": [
+    "app/(tabs)/profile.tsx:60-74 — Alert.alert with a destructive-button onPress is the ONLY logout path on Profile. On web this means logout is unreachable. Either install an Alert shim globally or guard with Platform.OS === 'web' and call window.confirm() inline.",
+    "src/components/CaptureFormScreen.tsx:83-89 — same Alert.alert pattern, success path can't acknowledge or navigate back on web. Strongly suggest a global shim rather than per-screen Platform.select to avoid drift.",
+    "src/theme/colors.ts:35 — trades=#FFA630 ✓; hospitality=#E11D48 ✓; the warning yellow #FFCC00 and the new trades amber #FFA630 are visually distinct in screenshots — colour contract restored.",
+    "app/register.tsx — whitespace text-node bug from iter_1 is gone; no `Unexpected text node: . A text node cannot be a child of a <View>.` in the console for the full register pageview."
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "NA (frontend-only iteration; no /api/* failures observed during navigation)",
+    "frontend": "6/8 PRD scenarios PASS (trades accent, register console clean, industry-switcher testID, capture form no red-box, hospitality accent, pre-login authority blue). 1 PARTIAL (admin-login button bg = #FFCC00 confirmed but submit→admin-stack navigation timed out in this run — not a regression vs iter_1). 1 FAIL (logout from Profile is unreachable on web because Alert.alert is a no-op)."
+  },
+  "seed_data_creation": "None. Used externally-seeded trades.demo@safebase.com.au, hospitality.demo@safebase.com.au, admin@safebase.internal accounts from /app/memory/test_credentials.md.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Three fixes from iter_1 are VERIFIED in iter_2: (1) trades industry accent is now #FFA630 — visually amber, distinct from admin yellow #FFCC00; (2) register.tsx whitespace text-node RN-web error is gone (0 console hits across a full pageview + scroll-to-bottom); (3) Profile renders testID='industry-switcher' even for single-industry users with the 'SINGLE-INDUSTRY WORKSPACE' hint. Hospitality accent also re-themed to #E11D48 — verified. NEW ISSUE OPEN: logout from Profile is broken on web because no Alert.alert→window.confirm shim was installed; same root cause silently breaks every Alert callback (capture-form success, incident-saved, risk-saved, settings-saved). Re-test priorities for iter_3: (a) install web Alert shim, (b) verify Profile Sign-out → confirm → /login, (c) verify Capture submit → success toast → router.back(). Forgot-password submit testID is `forgot-submit` (not `forgot-submit-button`). Native flows (biometric, push delivery, native SQLite, Google OAuth) remain NA on web.",
+  "rca_of_issue": "Logout/Alert RCA: app/(tabs)/profile.tsx:60-74 wraps the destructive logout work (deregisterPush + disableBiometric + logout + router.replace('/login')) inside the second button of Alert.alert('Sign out', 'Are you sure...', [{Cancel}, {Sign out, destructive, onPress: ...}]). react-native-web's Alert module is a no-op stub — calling Alert.alert with buttons does NOT render any modal, does NOT call window.confirm, and does NOT invoke any button's onPress. Result on web preview: tap 'Sign out' → console silent → URL stays at /profile → user is stuck signed in. Reproduction: log in as trades.demo@safebase.com.au / Demo@1234 → navigate to /profile → click element with [data-testid='profile-logout-button']; observe URL unchanged, no `dialog` event in Playwright, no console message. The same Alert.alert pattern is used for capture-success, incident-saved, risk-saved, settings-saved alerts — all of which are unreachable on web. Mitigation: install a one-shot Alert shim for web. Suggested patch (src/lib/alert.web.ts, picked up by metro's .web.ts resolution, or imported once in app/_layout.tsx):\n```ts\nimport { Alert, Platform } from 'react-native';\nif (Platform.OS === 'web') {\n  (Alert as any).alert = (title: string, message?: string, buttons?: any[]) => {\n    const txt = [title, message].filter(Boolean).join('\\n\\n');\n    const destructive = buttons?.find((b) => b.style === 'destructive') ?? buttons?.find((b) => (b.text ?? '').toLowerCase() !== 'cancel');\n    const cancel = buttons?.find((b) => (b.style === 'cancel') || (b.text ?? '').toLowerCase() === 'cancel');\n    const ok = (buttons && buttons.length > 1) ? window.confirm(txt) : (window.alert(txt), true);\n    if (ok) destructive?.onPress?.();\n    else cancel?.onPress?.();\n  };\n}\n```"
+}
