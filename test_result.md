@@ -221,19 +221,11 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Phase 1E batch 1 — Hospitality FSS Register (list + create)"
-    - "Phase 1E batch 1 — Hospitality HACCP CCP log (list + create + breach flag)"
-    - "Phase 1E batch 1 — Hospitality Allergens (PEAL upsert with 15 priority allergens)"
-    - "Phase 1E batch 1 — Hospitality Cleaning schedule (list + create + complete sign-off)"
-    - "Phase 1E batch 1 — Hospitality Suppliers (approved supplier register)"
-    - "Phase 1E batch 1 — Hospitality Liquor / RSA register"
-    - "Phase 1E batch 1 — Hospitality Council inspection pack generator"
-    - "Phase 1E batch 1 — Transport Fleet vehicles (rego + GVM + expiry)"
-    - "Phase 1E batch 1 — Transport Fatigue logs (HVNL std hours + breach view)"
-    - "Phase 1E batch 1 — Transport Fitness-for-duty (driver self-declaration)"
-    - "Phase 1E batch 1 — Transport NHVR Notifiable Occurrence (s 596A 24h)"
-    - "Capture tab rework — industry-specific tile sets (5 industries)"
-    - "Modules tab rework — full sidebar parity with web (Core/Industry/Safety/Workflows/Library/Apps & Add-ons/Settings) with LockedTile upgrade-to-unlock pattern"
+    - "Phase 1E COMPLETE — all 22 per-industry screens live + Capture rework + Modules sidebar parity"
+    - "Hospitality (8/8): Temperature Logs, FSS Register, HACCP CCP, Allergens, Cleaning, Suppliers, Liquor/RSA, Inspection Pack"
+    - "Transport (8/8): Pre-trip, Vehicles, Fatigue, FFD, Load Restraint, Mass, CoR Due Diligence, NHVR"
+    - "Healthcare (6/6): AHPRA, Worker Screening, SIRS, NDIS Reportable, ACQSC Evidence, Care Minutes"
+    - "Retail (4/4): Lone Worker, Quick Induct, Customer Incidents, Roster Eligibility"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"

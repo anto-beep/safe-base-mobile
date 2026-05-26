@@ -307,7 +307,7 @@ export const TransportApi = {
     api.post<{ ok: boolean; pause: any }>(`/transport/drivers/${driverId}/pause`, { reason }),
 };
 
-// =================== HEALTHCARE (AHPRA + remind) ===================
+// =================== HEALTHCARE ===================
 export interface AhpraRecord {
   reg_id: string;
   worker_name: string;
@@ -324,12 +324,104 @@ export interface AhpraRecord {
   _expiring_soon?: boolean;
   _expired?: boolean;
 }
+
+export interface WorkerScreen {
+  screen_id: string;
+  worker_name: string;
+  worker_id?: string;
+  screening_type: "ndis" | "aged_care" | "wwcc" | "police_check";
+  clearance_number?: string;
+  jurisdiction?: string;
+  issued_at?: string;
+  expires_at?: string;
+  outcome: "cleared" | "barred" | "pending";
+  notes?: string;
+  _days_to_expiry?: number;
+  _expired?: boolean;
+}
+
+export interface SirsIncident {
+  incident_id: string;
+  category: string;
+  priority: "one" | "two";
+  summary: string;
+  occurred_at: string;
+  consumer_initials?: string;
+  service_code?: string;
+  notify_by_24h: string;
+  notify_by_30d: string;
+  acqsc_submitted_at?: string | null;
+  submission_reference?: string;
+  status: "pending" | "submitted";
+}
+
+export interface NdisReportable {
+  incident_id: string;
+  category: string;
+  summary: string;
+  occurred_at: string;
+  participant_initials?: string;
+  is_high_risk: boolean;
+  notify_commission_by: string;
+  commission_submitted_at?: string | null;
+  status: "pending" | "submitted";
+}
+
+export interface AcqscEvidence {
+  evidence_id: string;
+  standard: number; // 1-8
+  title: string;
+  description?: string;
+  evidence_type?: "policy" | "procedure" | "record" | "training";
+  linked_doc_ref?: string;
+  next_review_at?: string;
+}
+
+export interface CareMinute {
+  log_id: string;
+  consumer_initials: string;
+  minutes: number;
+  care_type: "rn" | "direct_care" | "allied_health";
+  clinician?: string;
+  date: string;
+  notes?: string;
+}
+
 export const HealthcareApi = {
+  // AHPRA
   listAhpra: () => api.get<{ rows: AhpraRecord[]; total: number }>("/healthcare/ahpra-register"),
+  listAhpraExpiring: (days = 30) => api.get<{ rows: AhpraRecord[]; total: number }>(`/healthcare/ahpra-register/expiring?days=${days}`),
   createAhpra: (b: { worker_name: string; profession: string; registration_number: string; registration_type?: string; conditions?: string[]; issued_at?: string; expires_at?: string }) =>
     api.post<AhpraRecord>("/healthcare/ahpra-register", b),
   remindAhpra: (clinicianOrRegId: string) =>
     api.post<{ ok: boolean; reminder: any }>(`/healthcare/ahpra-register/${clinicianOrRegId}/remind`, {}),
+
+  // Worker screening
+  listScreening: () => api.get<{ rows: WorkerScreen[]; total: number }>("/healthcare/worker-screening"),
+  createScreening: (b: { worker_name: string; screening_type: string; clearance_number?: string; jurisdiction?: string; issued_at?: string; expires_at?: string; outcome?: string; notes?: string }) =>
+    api.post<WorkerScreen>("/healthcare/worker-screening", b),
+
+  // SIRS
+  listSirs: () => api.get<{ rows: SirsIncident[]; total: number }>("/healthcare/sirs-incidents"),
+  createSirs: (b: { category: string; summary: string; occurred_at: string; consumer_initials?: string; service_code?: string }) =>
+    api.post<SirsIncident>("/healthcare/sirs-incidents", b),
+  submitSirs: (incidentId: string, submission_reference?: string) =>
+    api.post<{ incident_id: string; status: string }>(`/healthcare/sirs-incidents/${incidentId}/submit`, { submission_reference }),
+
+  // NDIS reportable
+  listNdis: () => api.get<{ rows: NdisReportable[]; total: number }>("/healthcare/ndis-reportable"),
+  createNdis: (b: { category: string; summary: string; occurred_at: string; participant_initials?: string }) =>
+    api.post<NdisReportable>("/healthcare/ndis-reportable", b),
+
+  // ACQSC evidence
+  listAcqsc: () => api.get<{ rows: AcqscEvidence[]; total: number; coverage: Record<string, number> }>("/healthcare/acqsc-evidence"),
+  createAcqsc: (b: { standard: number; title: string; description?: string; evidence_type?: string; linked_doc_ref?: string; next_review_at?: string }) =>
+    api.post<AcqscEvidence>("/healthcare/acqsc-evidence", b),
+
+  // Care minutes
+  listCareMinutes: () => api.get<{ rows: CareMinute[]; total: number; total_minutes: number }>("/healthcare/care-minutes"),
+  createCareMinutes: (b: { consumer_initials: string; minutes: number; care_type: string; clinician?: string; date?: string; notes?: string }) =>
+    api.post<CareMinute>("/healthcare/care-minutes", b),
 };
 
 // =================== RETAIL ===================
@@ -350,6 +442,47 @@ export interface LoneWorkerCheckin {
   _overdue_min?: number;
   _should_escalate?: boolean;
 }
+
+export interface QuickInduct {
+  induct_id: string;
+  casual_name: string;
+  casual_id?: string;
+  store_location?: string;
+  answers: Record<string, string>;
+  passed: boolean;
+  missing_answers: string[];
+  inducted_at: string;
+  expires_at?: string | null;
+  inducted_by?: string;
+}
+
+export interface QuickInductMeta {
+  questions: { key: string; q: string }[];
+  valid_days: number;
+}
+
+export interface CustomerIncident {
+  incident_id: string;
+  incident_type: "injury" | "aggression" | "theft" | "slip" | "other";
+  severity: "minor" | "moderate" | "serious";
+  summary: string;
+  occurred_at: string;
+  location?: string;
+  customer_initials?: string;
+  staff_involved?: string;
+  police_called: boolean;
+  ambulance_called: boolean;
+  cctv_ref?: string;
+  follow_up_action?: string;
+  status: "open" | "closed";
+}
+
+export interface RosterEligibility {
+  worker_id: string;
+  can_roster: boolean;
+  blockers: string[];
+}
+
 export const RetailApi = {
   listActive: () => api.get<{ rows: LoneWorkerCheckin[]; total: number }>("/retail/lone-worker/active"),
   listAll: () => api.get<{ rows: LoneWorkerCheckin[]; total: number }>("/retail/lone-worker/logs"),
@@ -359,4 +492,21 @@ export const RetailApi = {
     api.post<{ checkin_id: string; escalated: boolean }>(`/retail/lone-worker/escalate`, { checkin_id: checkinId, reason }),
   acknowledge: (shiftId: string, note?: string) =>
     api.post<{ ok: boolean }>(`/retail/lone-worker/${shiftId}/acknowledge`, { note }),
+
+  // Quick induct
+  quickInductMeta: () => api.get<QuickInductMeta>("/retail/quick-induct/meta"),
+  listQuickInduct: () => api.get<{ rows: QuickInduct[]; total: number }>("/retail/quick-induct"),
+  createQuickInduct: (b: { casual_name: string; answers: Record<string, string>; casual_id?: string; store_location?: string; inducted_by?: string }) =>
+    api.post<QuickInduct>("/retail/quick-induct", b),
+  quickInductStatus: (casualId: string) =>
+    api.get<{ casual_id: string; can_roster: boolean; reason: string; induct?: QuickInduct }>(`/retail/quick-induct/${casualId}/status`),
+
+  // Customer incidents
+  listCustomerIncidents: () => api.get<{ rows: CustomerIncident[]; total: number }>("/retail/customer-incidents"),
+  createCustomerIncident: (b: { incident_type: string; summary: string; occurred_at: string; severity?: string; location?: string; customer_initials?: string; staff_involved?: string; police_called?: boolean; ambulance_called?: boolean; cctv_ref?: string; follow_up_action?: string }) =>
+    api.post<CustomerIncident>("/retail/customer-incidents", b),
+
+  // Roster eligibility
+  rosterEligibility: (workerId: string) =>
+    api.get<RosterEligibility>(`/retail/roster-eligibility/${workerId}`),
 };
