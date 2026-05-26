@@ -6,7 +6,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View 
 import { Eyebrow } from "@/src/components/ui";
 import { useA11y } from "@/src/context/AccessibilityContext";
 import { useAuth } from "@/src/context/AuthContext";
-import { accentFor, COLORS } from "@/src/theme/colors";
+import { COLORS, TOKENS, accentFor } from "@/src/theme/colors";
 
 // Floating concierge chat + accessibility controls. Mounted globally.
 // Visible only while a customer is signed in.
@@ -20,25 +20,26 @@ export function FloatingOverlays() {
 
   return (
     <>
-      {/* Concierge chat — bottom right */}
+      {/* Concierge chat — bottom right, ALWAYS ink bg + warning yellow text.
+          The chat surface is industry-neutral by design. */}
       <TouchableOpacity
         testID="concierge-fab"
         onPress={() => router.push("/chat")}
         activeOpacity={0.85}
-        style={[styles.chatFab, { backgroundColor: accent }]}
+        style={[styles.chatFab, { backgroundColor: TOKENS.ink }]}
       >
-        <Ionicons name="chatbubble-ellipses" size={22} color={COLORS.appBg} />
-        <Text style={[styles.chatLabel, { color: COLORS.appBg }]}>TALK TO ME</Text>
+        <Ionicons name="chatbubble-ellipses" size={22} color={TOKENS.warning} />
+        <Text style={[styles.chatLabel, { color: TOKENS.warning }]}>TALK TO ME</Text>
       </TouchableOpacity>
 
-      {/* Accessibility — bottom left */}
+      {/* Accessibility — bottom left, ALWAYS authority blue (never industry-themed). */}
       <TouchableOpacity
         testID="a11y-fab"
         onPress={() => setA11yOpen(true)}
         activeOpacity={0.85}
-        style={styles.a11yFab}
+        style={[styles.a11yFab, { backgroundColor: TOKENS.authority }]}
       >
-        <Ionicons name="accessibility" size={20} color={COLORS.textPrimary} />
+        <Ionicons name="accessibility" size={20} color="#FFFFFF" />
       </TouchableOpacity>
 
       <A11ySheet visible={a11yOpen} onClose={() => setA11yOpen(false)} accent={accent} />
@@ -188,9 +189,6 @@ const styles = StyleSheet.create({
     bottom: 80,
     width: 44,
     height: 44,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.appBg,
     alignItems: "center",
     justifyContent: "center",
   },

@@ -3,7 +3,7 @@ import { Redirect, Tabs } from "expo-router";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 import { useAdminAuth } from "@/src/context/AdminAuthContext";
-import { COLORS } from "@/src/theme/colors";
+import { COLORS, TOKENS } from "@/src/theme/colors";
 
 const iconRenderer = (name: keyof typeof Ionicons.glyphMap) =>
   function AdminTabIcon({ color, size }: { color: string; size: number }) {

@@ -18,7 +18,7 @@ import { Logo } from "@/src/components/Logo";
 import { Card, Eyebrow, MONO, Pill } from "@/src/components/ui";
 import { useAuth } from "@/src/context/AuthContext";
 import { useNotificationPolling } from "@/src/hooks/useNotificationPolling";
-import { accentFor, COLORS, INDUSTRY_LABEL, INDUSTRY_TAGLINE, Industry } from "@/src/theme/colors";
+import { accentFor, COLORS, INDUSTRY_LABEL, INDUSTRY_TAGLINE, Industry, TOKENS } from "@/src/theme/colors";
 
 interface ScorePayload {
   score?: number;
@@ -38,16 +38,16 @@ export default function Home() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
-      <View style={styles.headerBar}>
-        <Logo size={26} showWordmark testID="home-logo" />
+      <View style={[styles.headerBar, { backgroundColor: TOKENS.ink, borderBottomColor: TOKENS.ink }]}>
+        <Logo size={26} showWordmark invert testID="home-logo" />
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
           <IndustrySwitcher />
           <TouchableOpacity
             testID="home-notifications-shortcut"
-            style={styles.bellWrap}
+            style={[styles.bellWrap, { borderColor: "#FFFFFF22" }]}
             onPress={() => router.push("/notifications")}
           >
-            <Ionicons name="notifications-outline" size={22} color={COLORS.textPrimary} />
+            <Ionicons name="notifications-outline" size={22} color="#FFFFFF" />
             {unreadCount > 0 ? (
               <View style={[styles.badge, { backgroundColor: accent }]} testID="home-unread-badge">
                 <Text style={styles.badgeText}>{unreadCount > 99 ? "99+" : String(unreadCount)}</Text>
@@ -263,7 +263,7 @@ const styles = StyleSheet.create({
   tagline: { color: COLORS.textSecondary, fontSize: 14, marginTop: 4 },
   bellWrap: { width: 40, height: 40, borderWidth: 1, borderColor: COLORS.border, alignItems: "center", justifyContent: "center", position: "relative" },
   badge: { position: "absolute", top: -6, right: -6, minWidth: 20, paddingHorizontal: 4, paddingVertical: 2, alignItems: "center", justifyContent: "center" },
-  badgeText: { color: COLORS.appBg, fontSize: 10, fontWeight: "800" },
+  badgeText: { color: "#FFFFFF", fontSize: 10, fontWeight: "800" },
   scoreRow: { flexDirection: "row", alignItems: "center", marginTop: 8 },
   scoreNum: { fontSize: 64, fontWeight: "800", letterSpacing: -2, fontFamily: MONO },
   scoreMeta: { flex: 1, marginLeft: 18 },

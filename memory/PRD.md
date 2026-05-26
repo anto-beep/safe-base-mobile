@@ -139,6 +139,43 @@ Admin (separate JWT): `/internal-admin/login`, `/verify-2fa`, `/me`,
 - Concierge chat
 - Expo push registration
 
+### Iter3 — Full colour system overhaul (Feb 26 2026)
+Re-aligned the entire palette to the web app spec (`SafeBase Mobile — Colour
+System` brief). The dark brutalist look from Iter1/2 was replaced by the
+editorial light theme used on safebase.com.au:
+
+- **New identity tokens** (`src/theme/colors.ts`):
+  - `ink` `#0A0A0A` · `background` `#FFFFFF` · `warning` `#FFCC00`
+  - `authority` `#002FA7` · `muted` `#F5F5F4` · `border` `#E5E5E5`
+  - `destructive` `#DC2626` · `success` `#059669`
+  - Status tints: `warnTint #FEF3C7` · `dangerTint #FEE2E2` · `successTint #ECFDF5`
+- **`activeAccent()` resolver + `useAccent()` hook** swaps the accent at
+  runtime based on auth state:
+  - Pre-login → `authority` (blue)
+  - Internal admin signed in → `warning` (yellow)
+  - Customer signed in → `industry` colour
+  - High contrast → `warning` (WCAG-AAA override)
+- **Back-compat `COLORS.*` shim** points every legacy import at the new
+  light values, so every screen re-themed without touching call-sites
+  (white surfaces, ink text, light borders, light muted surfaces).
+- **`fgForAccent()`** auto-picks `#FFFFFF` text on authority-blue / destructive
+  buttons and `#0A0A0A` ink on yellow/amber/teal/purple industry accents.
+- **Pre-login screens** (`/login`, `/register`, `/forgot-password`,
+  `/admin-login`) all switched to authority blue for primary CTAs, links,
+  focus rings and `/ SIGN IN`-style eyebrows.
+- **Admin tree** uses `warning` accent everywhere — visually distinct from
+  pre-login blue and post-login industry colours.
+- **Home header** swapped to a solid `ink` bar with the inverted (white)
+  wordmark + industry-coloured bell badge.
+- **Concierge chat** header is `ink` with `warning` logo + back arrow, send
+  button is `warning` yellow square with ink icon. Industry-neutral.
+- **Concierge FAB** always `ink` + `warning` chip; **accessibility FAB**
+  always `authority` blue (per spec, never industry-themed — stays
+  recognisable everywhere).
+- **Logo** always wears the yellow tile (`warning`) — the brand mark is
+  industry-immune. Wordmark flips ink↔white via the `invert` prop for use
+  on dark hero bars (home header) vs light surfaces (every other screen).
+
 ### Iter2 — Full v1 build (Feb 25 2026)
 Brought the app from MVP to the full §12 Definition of Done from the build
 brief:

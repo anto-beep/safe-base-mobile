@@ -14,9 +14,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { api } from "@/src/api/client";
 import { Eyebrow, Input, PrimaryButton } from "@/src/components/ui";
-import { COLORS } from "@/src/theme/colors";
+import { COLORS, TOKENS } from "@/src/theme/colors";
 
 export default function ForgotPassword() {
+  const accent = TOKENS.authority;
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<{ ok: boolean; msg: string } | null>(null);
@@ -54,7 +55,7 @@ export default function ForgotPassword() {
             <Text style={styles.backText}>Back to sign in</Text>
           </TouchableOpacity>
 
-          <Eyebrow color={COLORS.warning}>Reset password</Eyebrow>
+          <Eyebrow color={accent}>Reset password</Eyebrow>
           <Text style={styles.title}>We&apos;ll email you a reset link.</Text>
           <Text style={styles.subtitle}>
             Enter the email address tied to your SafeBase account. Links expire in 1 hour.
@@ -70,7 +71,7 @@ export default function ForgotPassword() {
             placeholder="you@company.com.au"
             value={email}
             onChangeText={setEmail}
-            accent={COLORS.warning}
+            accent={accent}
           />
 
           {status ? (
@@ -86,7 +87,7 @@ export default function ForgotPassword() {
             testID="forgot-submit"
             label="Send reset link"
             onPress={submit}
-            accent={COLORS.warning}
+            accent={accent}
             loading={loading}
           />
         </ScrollView>

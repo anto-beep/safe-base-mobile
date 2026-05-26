@@ -21,7 +21,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { api } from "@/src/api/client";
 import { Eyebrow, Input, PrimaryButton } from "@/src/components/ui";
 import { useAuth } from "@/src/context/AuthContext";
-import { accentFor, COLORS } from "@/src/theme/colors";
+import { COLORS, TOKENS, accentFor } from "@/src/theme/colors";
 import { storage } from "@/src/utils/storage";
 
 interface ChatTurn {
@@ -102,13 +102,13 @@ export default function Chat() {
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <Stack.Screen options={{ headerShown: false }} />
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: TOKENS.ink }]}>
         <TouchableOpacity testID="chat-back" onPress={() => router.back()} style={{ marginRight: 12 }}>
-          <Ionicons name="chevron-back" size={22} color={COLORS.textSecondary} />
+          <Ionicons name="chevron-back" size={22} color={TOKENS.warning} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Eyebrow color={accent}>SafeBase concierge</Eyebrow>
-          <Text style={styles.title}>Ask me anything compliance.</Text>
+          <Eyebrow color={TOKENS.warning}>SafeBase concierge</Eyebrow>
+          <Text style={[styles.title, { color: "#FFFFFF" }]}>Ask me anything compliance.</Text>
         </View>
       </View>
 
@@ -167,12 +167,12 @@ export default function Chat() {
           />
           <TouchableOpacity
             testID="chat-send-button"
-            style={[styles.sendBtn, { backgroundColor: accent, opacity: busy || !draft.trim() ? 0.5 : 1 }]}
+            style={[styles.sendBtn, { backgroundColor: TOKENS.warning, opacity: busy || !draft.trim() ? 0.5 : 1 }]}
             onPress={send}
             disabled={busy || !draft.trim()}
             activeOpacity={0.85}
           >
-            <Ionicons name="arrow-up" size={22} color={COLORS.appBg} />
+            <Ionicons name="arrow-up" size={22} color={TOKENS.ink} />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

@@ -12,7 +12,7 @@ import {
   ViewStyle,
 } from "react-native";
 
-import { COLORS } from "@/src/theme/colors";
+import { COLORS, fgForAccent } from "@/src/theme/colors";
 
 export const MONO = Platform.select({ ios: "Menlo", android: "monospace", default: "monospace" });
 
@@ -72,8 +72,7 @@ export function PrimaryButton({
   testID?: string;
   iconName?: keyof typeof Ionicons.glyphMap;
 }) {
-  const isDark = accent === COLORS.warning || accent === "#FFCC00" || accent === "#F59E0B" || accent === "#0DC4B5";
-  const fg = isDark ? "#0A0A0A" : "#FFFFFF";
+  const fg = fgForAccent(accent);
   return (
     <TouchableOpacity
       testID={testID}
@@ -238,8 +237,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
     padding: 16,
     marginBottom: 12,
-  },
-  btn: {
+  },  btn: {
     minHeight: 50,
     paddingHorizontal: 18,
     paddingVertical: 14,

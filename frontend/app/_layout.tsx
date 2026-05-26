@@ -40,11 +40,11 @@ export default function RootLayout() {
       <AccessibilityProvider>
         <AuthProvider>
           <AdminAuthProvider>
-            <StatusBar style="light" />
+            <StatusBar style="dark" />
             <Stack
               screenOptions={{
                 headerShown: false,
-                contentStyle: { backgroundColor: "#0A0A0A" },
+                contentStyle: { backgroundColor: "#FFFFFF" },
                 animation: "fade",
               }}
             />

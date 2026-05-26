@@ -14,7 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Eyebrow, Input, PrimaryButton } from "@/src/components/ui";
 import { useAuth } from "@/src/context/AuthContext";
-import { COLORS, INDUSTRY_ACCENT, INDUSTRY_LABEL, Industry } from "@/src/theme/colors";
+import { COLORS, INDUSTRY_ACCENT, INDUSTRY_LABEL, Industry, TOKENS } from "@/src/theme/colors";
 
 const INDUSTRIES: Industry[] = ["trades", "hospitality", "transport", "healthcare", "retail"];
 
@@ -27,7 +27,11 @@ export default function Register() {
   const [industry, setIndustry] = useState<Industry>("trades");
   const [error, setError] = useState<string | null>(null);
 
-  const accent = INDUSTRY_ACCENT[industry];
+  const accent = TOKENS.authority;
+  const industryAccent = INDUSTRY_ACCENT[industry];
+
+  // Render hint: register header uses `accent` (blue), industry chip uses
+  // `industryAccent` (which is the same as `a` below per-row).
 
   const submit = async () => {
     setError(null);
@@ -161,8 +165,7 @@ export default function Register() {
             <Text style={styles.linkText}>
               Already have an account? <Text style={{ color: accent, fontWeight: "800" }}>Sign in</Text>
             </Text>
-          </TouchableOpacity>
-        </ScrollView>
+          </TouchableOpacity>        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

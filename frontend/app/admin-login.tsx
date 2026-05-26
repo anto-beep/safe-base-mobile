@@ -16,9 +16,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Eyebrow, Input, PrimaryButton } from "@/src/components/ui";
 import { useAdminAuth } from "@/src/context/AdminAuthContext";
-import { COLORS } from "@/src/theme/colors";
+import { COLORS, TOKENS } from "@/src/theme/colors";
 
 export default function AdminLogin() {
+  // Admin uses warning yellow as accent across the entire admin tree —
+  // visually distinct from blue (pre-login) and industry colours (customer).
+  const accent = TOKENS.warning;
   const { admin, login, verify2fa, step, loading } = useAdminAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -67,7 +70,7 @@ export default function AdminLogin() {
             <Text style={styles.backText}>Customer sign in</Text>
           </TouchableOpacity>
 
-          <Eyebrow color={COLORS.warning}>Internal admin</Eyebrow>
+          <Eyebrow color={accent}>Internal admin</Eyebrow>
           <Text style={styles.title}>SafeBase staff access.</Text>
           <Text style={styles.subtitle}>
             This sign-in is for SafeBase internal staff only. All actions are audited.
@@ -84,7 +87,7 @@ export default function AdminLogin() {
                 onChangeText={setCode}
                 placeholder="123 456"
                 keyboardType="number-pad"
-                accent={COLORS.warning}
+                accent={accent}
                 maxLength={6}
               />
               {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -92,7 +95,7 @@ export default function AdminLogin() {
                 testID="admin-verify"
                 label="Verify"
                 onPress={onVerify}
-                accent={COLORS.warning}
+                accent={accent}
                 loading={loading}
               />
             </>
@@ -106,7 +109,7 @@ export default function AdminLogin() {
                 autoCapitalize="none"
                 keyboardType="email-address"
                 placeholder="admin@safebase.internal"
-                accent={COLORS.warning}
+                accent={accent}
               />
               <Input
                 testID="admin-password"
@@ -115,14 +118,14 @@ export default function AdminLogin() {
                 onChangeText={setPassword}
                 secureTextEntry
                 placeholder="••••••••"
-                accent={COLORS.warning}
+                accent={accent}
               />
               {error ? <Text style={styles.error}>{error}</Text> : null}
               <PrimaryButton
                 testID="admin-signin"
                 label="Sign in"
                 onPress={onSignIn}
-                accent={COLORS.warning}
+                accent={accent}
                 loading={loading}
               />
             </>

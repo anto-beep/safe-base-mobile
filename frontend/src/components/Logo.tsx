@@ -14,10 +14,11 @@ interface Props {
 
 // Typographic logo mark: yellow tile + cube icon + SAFEBASE wordmark.
 // No external image dependency — pure components for crisp scaling everywhere.
+// `invert` flips for use on dark surfaces (e.g. concierge chat header).
 export function Logo({ size = 28, showWordmark = true, style, invert, testID }: Props) {
-  const tileBg = invert ? COLORS.appBg : COLORS.warning;
-  const cubeColor = invert ? COLORS.warning : COLORS.appBg;
-  const wordmarkColor = invert ? COLORS.textPrimary : COLORS.textPrimary;
+  const tileBg = COLORS.warning; // brand mark — always yellow
+  const cubeColor = "#0A0A0A";
+  const wordmarkColor = invert ? "#FFFFFF" : "#0A0A0A";
   return (
     <View testID={testID} style={[styles.row, style as any]}>
       <View style={[styles.tile, { width: size, height: size, backgroundColor: tileBg }]}>
