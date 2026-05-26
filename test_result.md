@@ -291,3 +291,38 @@ agent_communication:
         - Iteration 2 should also cover the capture-form offline flush
           (/capture/lone-worker-checkin) and the logout-from-Alert flow on web
           (window.confirm → accept).
+
+  - agent: "testing"
+    message: |
+      Iteration 2: 6/8 PASS, 1 PARTIAL, 1 CRITICAL FAIL.
+      Verified iter_1 fixes are green. New CRITICAL:
+        - Alert.alert is a no-op on react-native-web → logout never fires,
+          and every capture/save success callback that uses Alert.alert→
+          router.back() also silently dies.
+      Suggested fix: install an Alert.alert → window.confirm shim.
+
+  - agent: "main"
+    message: |
+      Iteration 2 fix applied:
+        - NEW src/lib/alert-web-shim.ts → runtime monkey-patches Alert.alert
+          on web to map to window.alert / window.confirm and invoke the
+          destructive/OK or cancel onPress. No-op on iOS/Android (early
+          Platform.OS !== "web" return).
+        - app/_layout.tsx now calls installAlertWebShim() at module load,
+          before any screen mounts.
+
+  - agent: "testing"
+    message: |
+      Iteration 3: 8/8 PASS.
+        - Profile logout fires real browser confirm → routes to /login,
+          localStorage cleared.
+        - Capture submit fires real browser alert (OK callback reached);
+          backend returned 403 on /api/retail/lone-worker/checkin (backend
+          team to investigate — not a mobile regression).
+        - Full regression sweep green: trades #FFA630, hospitality #E11D48,
+          authority blue #002FA7, admin warning #FFCC00, switcher testID,
+          forgot-submit, register no text-node, admin stack lands.
+        - Console errors: 0.
+
+      Mocked on web preview (carry-over): native SQLite (offline-queue.web.ts
+      stub) + push delivery (registration only, APNs/FCM not configured).
