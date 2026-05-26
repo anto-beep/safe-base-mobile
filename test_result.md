@@ -460,6 +460,71 @@ agent_communication:
 
       Credentials file: /app/memory/test_credentials.md.
 
+  - agent: "testing"
+    message: |
+      Iteration 8 (frontend, web preview): ~82% green (41/43 screens mount).
+      HIGH issues found:
+        - /addons/api-keys → red-screen crash `(targets ?? ["generic"]).map is
+          not a function`. ApiKeysApi.targets() returned non-array.
+        - /library/[type] for documents/policies → fell through to "Process
+          library" title with raw type in body.
+        - /safety/[module] for unmapped slugs (swms etc.) → silent fallback
+          to Inspections chrome + backend "Unknown safety module" error.
+      MED:
+        - /addons/tradecheck rendered "3 of undefined businesses verified".
+        - src/api/client.ts friendly 403/401 copy was suppressed by
+          backendDetail precedence.
+        - Capture-tab non-owned-industry tiles were hidden (spec said
+          locked-tile).
+        - hospitality.demo login flaked once (retest needed).
+      Regression: all amber/red/yellow accents still correct, no text-node,
+      all 4 industries × all per-industry screens still mount.
+
+  - agent: "main"
+    message: |
+      Iteration 8 fixes applied (7 total):
+        1. app/addons/api-keys.tsx → Array.isArray(t) guard on targets.
+        2. app/library/[type].tsx → added META entries for documents,
+           policies, forms, templates + prettify() fallback for any other
+           slug (icon: library-outline, generic friendly copy).
+        3. app/safety/[module].tsx → if CONFIG[slug] is undefined, render
+           a friendly 'Available on web' Card with prettified title +
+           Open-on-web button. All hooks lifted above early return to
+           satisfy Rules of Hooks. SafetyApi calls now use moduleKeyTyped
+           cast so types are clean.
+        4. app/addons/tradecheck.tsx → `typeof stats.total === "number"`
+           guard before rendering the verified-count subtitle.
+        5. src/api/client.ts → new preferFriendly precedence: 401, 403,
+           5xx always use the friendly copy; 404 and other statuses still
+           prefer backend detail when present.
+        6. app/(tabs)/capture.tsx → added 'Other industries' eyebrow + grid
+           of LockedTile cards for the 4 non-owned industries. Mirrors the
+           Modules sidebar pattern. Per user "show locked tiles" directive.
+        7. src/api/client.ts (bonus) → exposed `api.put` (was missing —
+           safebase.ts/extras.ts had calls that would have crashed on
+           settings/business put, settings/notifications put, onboarding
+           put, partner branding put).
+
+  - agent: "testing"
+    message: |
+      Iteration 9: ALL 7 FIXES GREEN.
+        - /addons/api-keys mounts; ChipGroup populated; no crash.
+        - /library/documents → "Document library", /library/policies →
+          "Policy library", /library/forms → "Form library".
+        - /safety/swms → friendly 'Available on web' Card; /safety/
+          inspections still mounts IndustryListShell.
+        - /addons/tradecheck subtitle no longer says "undefined".
+        - trades.demo opening /hospitality/temperature-logs surfaces
+          "You don't have access to this feature on this account."
+        - Capture tab shows 'Other industries' with 4 LockedTile cards
+          for both trades.demo and hospitality.demo.
+        - /settings/onboarding mounts; api.put exposed.
+      Regression sweep green. Hospitality.demo login that flaked in
+      iter 8 succeeded cleanly this run. retest_needed: false.
+
+      Mocked (carry-over, NA on web): expo-notifications push token web
+      stub, native SQLite offline queue web stub.
+
   - agent: "main"
     message: |
       PHASE 1D (canonical per-industry screens) delivered + home
