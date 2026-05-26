@@ -347,11 +347,11 @@ agent_communication:
            the cold ≤5 / frozen ≤-15 / hot ≥60 rule then server-authoritative
            on save.
         2. /app/transport/pretrip.tsx — Pre-trip inspection list + create.
-           NHVR-canonical 18-item checklist across 6 groups (Tyres / Lights /
-           Brakes / Load restraint / Fluids / Cabin & safety). Defaults
-           every item to PASS so the driver only taps defects. Computes
-           defects + fit_to_drive locally and on submit; server is
-           authoritative.
+           NHVR-canonical 19-item checklist across 6 groups (Tyres / Lights /
+           Brakes / Load restraint / Fluids / Cabin & safety; Cabin = 4 items
+           seatbelt/mirrors/horn/extinguisher). Defaults every item to PASS
+           so the driver only taps defects. Computes defects + fit_to_drive
+           locally and on submit; server is authoritative.
         3. /app/healthcare/ahpra.tsx — AHPRA register list + create + Iter57
            inline remind action (POST /api/healthcare/ahpra-register/{reg_id}/remind).
            Profession chips (10 disciplines), registration type chips (5),

@@ -20,12 +20,40 @@ export interface ApiError extends Error {
 }
 
 function makeError(status: number, payload: any, fallback: string): ApiError {
+  // Surface human-friendly messages distinguishing the two failure modes the
+  // mobile UI cares about:
+  //   - 403: backend reachable but the authenticated account lacks the
+  //          feature/industry — show "you don't have access".
+  //   - 404 on an /api/* call usually means the SafeBase pod is down /
+  //          suspended (the entire FastAPI app returns 404 when off), NOT a
+  //          missing record. Distinguish so error cards don't say
+  //          "Request failed (404)" when SafeBase is offline.
+  let friendly: string | null = null;
+  if (status === 403) {
+    friendly = "You don't have access to this feature on this account.";
+  } else if (status === 404) {
+    // Heuristic: if the payload is empty / non-JSON the whole pod is offline.
+    if (!payload || typeof payload === "string") {
+      friendly = "SafeBase service is temporarily unavailable. Please try again in a moment.";
+    }
+  } else if (status === 401) {
+    friendly = "Your session has expired. Please sign in again.";
+  } else if (status >= 500) {
+    friendly = "SafeBase encountered an error. Please retry shortly.";
+  }
+
+  const backendDetail =
+    (payload && typeof payload === "object" && (payload.detail || payload.message)) || null;
+
   const detail =
-    (payload && typeof payload === "object" && (payload.detail || payload.message)) ||
+    backendDetail ||
+    friendly ||
     fallback;
-  const err = new Error(typeof detail === "string" ? detail : fallback) as ApiError;
+
+  const message = typeof detail === "string" ? detail : fallback;
+  const err = new Error(message) as ApiError;
   err.status = status;
-  err.detail = typeof detail === "string" ? detail : fallback;
+  err.detail = message;
   err.payload = payload;
   return err;
 }
