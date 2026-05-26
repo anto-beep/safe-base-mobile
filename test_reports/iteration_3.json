@@ -1,0 +1,42 @@
+{
+  "summary": "Iteration_3 frontend retest of SafeBase Mobile (Expo SDK 54) on http://localhost:3000, mobile viewport 390x844. The Alert.alert → window.confirm/alert web shim from /app/frontend/src/lib/alert-web-shim.ts (wired into app/_layout.tsx at module load) WORKS as designed. Both previously-critical flows now PASS: (1) Profile → tap testID='profile-logout-button' fires a real browser `confirm` dialog with body 'Sign out\\n\\nAre you sure you want to sign out?', Playwright `dialog.accept()` invokes the destructive button's onPress, which awaits deregisterPush + disableBiometric + logout + router.replace('/login'); URL routes to http://localhost:3000/login and localStorage is fully cleared (0 keys, no safebase.jwt). (2) /capture/lone-worker-checkin submit triggers a real `alert` dialog ('Saved\\n\\nYou're offline. We'll sync this to SafeBase the moment your connection is back.') confirming the OK→router.back() callback is reached; the submit pipeline through src/lib/offline-queue.web.ts queues the write — note: backend rejected as 403 so the offline-queue fallback success path fired instead of the regular 'Submitted' alert (this is a SafeBase backend-side issue, NOT a shim regression). Regression sweep PASS across the board: trades accent #FFA630 = rgb(255,166,48) 13 hits on home, 9 on profile; hospitality accent #E11D48 = rgb(225,29,72) 12 hits on home; pre-login authority blue #002FA7 = rgb(0,47,167) on login (4), forgot-password (2); register screen 0 'Unexpected text node' errors; testID='industry-switcher' visible for single-industry trades user; testID='forgot-submit' present and visible on /forgot-password; admin-login button bg confirmed rgb(255,204,0)=#FFCC00; admin login (admin@safebase.internal/AdminDemo@1234) lands on /(admin) HQ screen with yellow accent rgb(255,204,0) (8 hits) and ZERO trades amber (#FFA630 count = 0) so there is no visual clash. Console health: 0 total [error] entries during the full regression pass, 0 shim-related errors (no 'Cannot assign to read only property alert'), 0 text-node errors. Iteration_3 PASS — 8/8 PRD scenarios green, both prior criticals closed.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "POST /api/retail/lone-worker/checkin (SafeBase external backend)",
+        "issue": "Returned HTTP 403 during the capture-form submit test, which sent the CaptureFormScreen down the offline-queue fallback path. Functionally the shim test still proved Alert→OK→router.back() fires (a browser `alert` dialog fired and was accepted by Playwright). Flagging because users tapping 'Submit check-in' against this 403 will only ever see the offline-queued message instead of the live success path. Likely the external SafeBase backend is still partially seeded or the trades demo user lacks retail-role grants for this endpoint."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/test_reports/iteration_3.json",
+    "/app/test_reports/iteration_2.json",
+    "/app/test_reports/iteration_1.json"
+  ],
+  "action_items": [
+    "(Optional) Investigate why POST /api/retail/lone-worker/checkin returns 403 for trades.demo@safebase.com.au on the SafeBase external backend — once fixed, the regular 'Submitted' Alert path can be re-verified end-to-end. Not blocking iteration_3 sign-off because the shim itself is proven working via the offline-queue 'Saved' Alert path.",
+    "(Carry-over, library-level) react-navigation still emits 'props.pointerEvents is deprecated. Use style.pointerEvents' — harmless RN-web warning, not actionable inside this repo. Either pin to a react-navigation release with the migration or accept the noise."
+  ],
+  "critical_code_review_comments": [
+    "src/lib/alert-web-shim.ts is clean: Platform.OS guard, idempotent (installed flag), preserves cancel-vs-destructive routing, single window.alert vs window.confirm dispatch by button count — correctly handles RN's Alert.alert(title, msg, buttons) contract.",
+    "app/_layout.tsx invokes installAlertWebShim() at module top-level before any screen mounts, which is the right place — the shim is in effect even before the first useEffect runs, so any login-screen Alert calls are covered.",
+    "Profile logout still gates on Alert.alert; with the shim that is fine on web and remains native on iOS/Android (early return). Same pattern in src/components/CaptureFormScreen.tsx — both call-sites now work uniformly."
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "NA (frontend-only iteration). Noted one upstream 403 on /api/retail/lone-worker/checkin — does not affect shim verdict.",
+    "frontend": "8/8 PRD scenarios PASS — Profile logout (CRITICAL closed), Capture-form OK callback (CRITICAL closed), trades amber #FFA630 13×, hospitality pink #E11D48 12×, pre-login authority blue #002FA7, register 0 text-node errors, profile industry-switcher visible, forgot-password testID, admin login lands on admin stack with #FFCC00 (no clash with trades amber)."
+  },
+  "seed_data_creation": "None. Used externally-seeded trades.demo@safebase.com.au, hospitality.demo@safebase.com.au, admin@safebase.internal accounts.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iter_3 closes both criticals from iter_2 (Alert→window.confirm shim works for logout and capture-form OK callback). Remaining backlog is library-level only (react-navigation pointerEvents warning, 6×/page) and one upstream backend 403 on POST /api/retail/lone-worker/checkin which is a SafeBase backend permission/seed issue, not a mobile app bug. Helper note on testIDs: login=login-{email,password,submit}-{...}, admin-login=admin-{email,password,signin} (note: NOT admin-login-* — different prefix from regular login), forgot-password submit=forgot-submit (no -button suffix), capture-form=lone-worker-{status-ok|status-uncomfortable|status-incident|location|next_checkin_min|notes|submit|back}. Profile single-industry user still renders industry-switcher with one row. Native flows remain NA on web preview: biometric, push delivery, native SQLite, Google OAuth.",
+  "rca_of_issue": "Iteration_2 CRITICAL (Alert.alert no-op on react-native-web) is RESOLVED in iteration_3 by /app/frontend/src/lib/alert-web-shim.ts. Reproduction of the fix: launch http://localhost:3000/login → sign in as trades.demo@safebase.com.au / Demo@1234 → tap tab 'Profile' → tap [data-testid='profile-logout-button'] → Playwright `page.on('dialog')` fires with type='confirm', message='Sign out\\n\\nAre you sure you want to sign out?' → dialog.accept() → URL routes to /login, localStorage cleared. Same pattern for /capture/lone-worker-checkin: select 'All good' (lone-worker-status-ok), fill location/notes, tap lone-worker-submit → browser `alert` fires with the success message → dialog.accept() invokes the OK→router.back() callback (verified by the 'GO_BACK was not handled' navigator warning — confirming router.back() executed; only no-op'd because the screen was navigated to directly via URL with no history stack). The shim file's mechanism: at module load on web, it reassigns Alert.alert to a function that picks a cancelBtn (style==='cancel') and an okBtn (destructive ?? first-non-cancel ?? last), calls window.confirm for 2+ buttons or window.alert for 0/1, then dispatches the appropriate onPress. Idempotent (installed flag) and no-op on iOS/Android (Platform.OS guard)."
+}

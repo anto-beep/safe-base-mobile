@@ -9,7 +9,12 @@ import { AccessibilityProvider } from "@/src/context/AccessibilityContext";
 import { AdminAuthProvider } from "@/src/context/AdminAuthContext";
 import { AuthProvider } from "@/src/context/AuthContext";
 import { useIconFonts } from "@/src/hooks/use-icon-fonts";
+import { installAlertWebShim } from "@/src/lib/alert-web-shim";
 import { startBackgroundSync } from "@/src/lib/offline-queue";
+
+// Install the Alert.alert → window.confirm shim on web before any screen
+// imports run. No-op on iOS / Android.
+installAlertWebShim();
 
 // Keep the native splash visible from cold start until icon fonts register.
 // Required because @expo/vector-icons' componentDidMount fallback fires
