@@ -221,15 +221,11 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Email/password login flow (customer)"
-    - "Admin login flow"
-    - "Dynamic colour system (authority blue / admin yellow / industry accent)"
-    - "Owner vs Worker dashboard routing"
-    - "Industry alert tiles / widget fetching"
-    - "Concierge AI chat overlay"
-    - "Offline-first capture queue (SQLite)"
-    - "Industry switcher + module navigation"
-    - "Forgot password flow"
+    - "Hospitality Temperature Logs (list + stats + create)"
+    - "Transport Pre-trip inspection (18-item checklist + create)"
+    - "Healthcare AHPRA register (list + create + Iter57 remind)"
+    - "Retail Lone-worker shifts (active list + check-in + Iter57 acknowledge + escalate)"
+    - "Home — remove SAFEBASE wordmark; slim industry header"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
