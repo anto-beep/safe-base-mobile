@@ -505,10 +505,46 @@ agent_communication:
            settings/business put, settings/notifications put, onboarding
            put, partner branding put).
 
+  - agent: "testing"
+    message: |
+      Iteration 10: 10/12 verified green.
+        - 4-tab layout (Home/Modules/Capture/Settings) confirmed, Profile
+          merged into Settings.
+        - Trial banner renders correctly with countdown and routes to
+          /billing.
+        - Settings tab: identity, plan summary card (3/5 unlocked, 3 trial),
+          Account + Plan sections, Talk to support, Sign out.
+        - Billing dashboard: 5 industry cards with status pills correctly
+          driven from /billing/my-subscriptions.
+        - Plans sheet opens with monthly/annual toggle.
+        - Capture & Modules tabs gated by BillingContext.isUnlocked;
+          unlocked extras (trial/active) render inline with TRIAL pill;
+          locked industries fall to LockedTile leading to /billing.
+        - Accessibility widget NOW WORKS: html font-size goes 16→20.8 on
+          Larger; <style id="safebase-a11y-style"> tag injects on web; the
+          dyslexia/high-contrast/emphasize-links rules append correctly.
+        - No console errors, no red screens, accents preserved.
+      Issues found:
+        - MED (frontend): duplicate "Start free trial" + "View plans" CTAs
+          on EXPIRED billing cards (both render).
+        - BACKEND DATA: /billing/plans?industry=transport returns plans:[]
+          (backend seed gap — main agent can't fix; coordinate w/ SafeBase
+          team).
+        - LOW: tabBarTestID doesn't propagate to web tab buttons (cosmetic
+          for automation).
+
   - agent: "main"
     message: |
-      Iteration 10 — major feature: per-industry FREE TRIAL gating + Settings
-      as its own tab + Accessibility widget actually applies prefs.
+      Iteration 10 fix applied:
+        - app/billing/index.tsx: split the dual-CTA. "Start free trial"
+          now ONLY renders for kind === "none" (never-tried industries).
+          "View plans & upgrade" / "Upgrade to unlock" renders for trial /
+          expired / canceling. Active gets Change-plan + Cancel.
+      Outstanding (NOT mobile fixable):
+        - Transport plans empty in backend response (seed gap on SafeBase
+          backend).
+        - testID prop forwarding through Expo Router tab buttons on web
+          (cosmetic for automation harnesses).
 
       NEW MODULES:
         - src/api/billing.ts — typed wrappers for /billing/plans,

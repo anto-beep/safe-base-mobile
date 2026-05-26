@@ -158,7 +158,8 @@ export default function BillingScreen() {
               ) : null}
 
               <View style={styles.actions}>
-                {st.kind === "none" || st.kind === "expired" ? (
+                {/* Start trial — only for industries the user has never tried */}
+                {st.kind === "none" ? (
                   <PrimaryButton
                     testID={`billing-trial-${ind}`}
                     label={isBusy ? "Starting…" : "Start free trial"}
@@ -169,16 +170,15 @@ export default function BillingScreen() {
                   />
                 ) : null}
 
+                {/* Upgrade — for trial / expired / canceling */}
                 {st.kind === "trial" || st.kind === "expired" || st.kind === "canceling" ? (
-                  <View style={{ marginTop: st.kind === "none" ? 8 : 0 }}>
-                    <PrimaryButton
-                      testID={`billing-upgrade-${ind}`}
-                      label="View plans & upgrade"
-                      iconName="rocket-outline"
-                      accent={cAccent}
-                      onPress={() => setPlansOpen(ind as IndustrySlug)}
-                    />
-                  </View>
+                  <PrimaryButton
+                    testID={`billing-upgrade-${ind}`}
+                    label={st.kind === "expired" ? "Upgrade to unlock" : "View plans & upgrade"}
+                    iconName={st.kind === "expired" ? "rocket-outline" : "rocket-outline"}
+                    accent={cAccent}
+                    onPress={() => setPlansOpen(ind as IndustrySlug)}
+                  />
                 ) : null}
 
                 {st.kind === "active" ? (
