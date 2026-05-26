@@ -68,19 +68,28 @@ export default function ModulesScreen() {
         {industrySpecific.length ? (
           <>
             <Eyebrow color={accent}>For {INDUSTRY_LABEL[industry].split(" ")[0].toLowerCase()}</Eyebrow>
-            <ModuleGrid modules={industrySpecific} accent={accent} onPress={(m) => router.push(`/module/${encodeURIComponent(m.slug)}` as any)} />
+            <ModuleGrid modules={industrySpecific} accent={accent} onPress={(m) => router.push(routeFor(m) as any)} />
           </>
         ) : null}
 
         <View style={{ height: 14 }} />
         <Eyebrow color={COLORS.textSecondary}>Core</Eyebrow>
-        <ModuleGrid modules={UNIVERSAL} accent={accent} onPress={(m) => router.push(`/module/${encodeURIComponent(m.slug)}` as any)} />
+        <ModuleGrid modules={UNIVERSAL} accent={accent} onPress={(m) => router.push(routeFor(m) as any)} />
 
         <View style={{ height: 80 }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
+
+// Some modules now have dedicated mobile screens — route to those instead of
+// the generic /module/[slug] placeholder. Keep this map small; new entries
+// added as each module gets its own native screen during the parity build.
+function routeFor(m: ModuleDef): string {
+  if (m.slug === "incidents") return "/incident";
+  return `/module/${encodeURIComponent(m.slug)}`;
+}
+
 
 function ModuleGrid({ modules, accent, onPress }: { modules: ModuleDef[]; accent: string; onPress: (m: ModuleDef) => void }) {
   return (

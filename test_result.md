@@ -326,3 +326,86 @@ agent_communication:
 
       Mocked on web preview (carry-over): native SQLite (offline-queue.web.ts
       stub) + push delivery (registration only, APNs/FCM not configured).
+
+  - agent: "main"
+    message: |
+      PHASE 1A delivered: Incidents end-to-end (5-stage IncidentWorkflow).
+      Endpoints used (all live, verified): GET/POST /api/incident-workflow,
+      /api/incident-workflow/stats, /api/incident-workflow/{id},
+      PATCH .../triage|investigation|actions|close-out, POST .../reopen,
+      AI endpoints categorise/root-cause/lessons-learned. Constants and
+      labels mirror the web 1:1 (STAGES, SEVERITIES, INCIDENT_TYPES,
+      BODY_AREAS, INJURY_NATURES, TREATMENT_OPTIONS, CONTRIBUTING_FACTORS,
+      SHORT/LONG_TERM_ACTION_TYPES, CLOSE_CHECKLIST, INVOLVED_TYPES).
+
+      New screens:
+        - /app/incident/index.tsx — Register (stats, filters, search, list)
+        - /app/incident/new.tsx — 6-step submission wizard with photos
+          (expo-image-picker camera + library, base64 data URIs)
+        - /app/incident/[id].tsx — Detail (lifecycle, submission,
+          per-stage cards with CTA buttons, audit log)
+        - /app/incident/triage/[id].tsx — Stage 2 (sev + notifiability
+          matrix + sign-off → advances to investigation)
+        - /app/incident/investigation/[id].tsx — Stage 3 (contributing
+          factors + root cause + AI assist → advances to actions)
+        - /app/incident/actions/[id].tsx — Stage 4 (short/long-term
+          actions w/ owner + due, worker comms + consultation)
+        - /app/incident/close-out/[id].tsx — Stage 5 (4-category
+          checklist + lessons + sign-off → status closed)
+
+      New supporting modules:
+        - /src/api/incidents.ts (typed client incl. AI endpoints)
+        - /src/constants/incident.ts (parity-checked enums & lists)
+        - /src/components/SeverityBadge.tsx, IncidentStageBar.tsx,
+          PhotoPicker.tsx, ChipGroup.tsx
+        - app/(tabs)/modules.tsx now routes "incidents" tile → /incident
+        - app/capture/incident-report.tsx → Redirect → /incident/new
+        - Installed expo-image-picker + @react-native-community/datetimepicker
+
+      Smoke-screenshotted /incident and /incident/new — both render and look
+      identical to the web register / submit wizard. Please run a full E2E
+      pass against the live backend.
+
+frontend_phase1a:
+  - task: "Incident register screen (stats + filters + search)"
+    file: "app/incident/index.tsx"
+    implemented: true
+    working: "NA"
+    priority: "high"
+    needs_retesting: true
+  - task: "Incident 6-step submission wizard (photos via expo-image-picker)"
+    file: "app/incident/new.tsx"
+    implemented: true
+    working: "NA"
+    priority: "high"
+    needs_retesting: true
+  - task: "Incident detail (lifecycle + audit log + stage CTAs)"
+    file: "app/incident/[id].tsx"
+    implemented: true
+    working: "NA"
+    priority: "high"
+    needs_retesting: true
+  - task: "Triage stage (sev + notifiability matrix + sign-off)"
+    file: "app/incident/triage/[id].tsx"
+    implemented: true
+    working: "NA"
+    priority: "high"
+    needs_retesting: true
+  - task: "Investigation stage (contributing factors + root cause + AI)"
+    file: "app/incident/investigation/[id].tsx"
+    implemented: true
+    working: "NA"
+    priority: "high"
+    needs_retesting: true
+  - task: "Actions stage (short/long-term actions w/ owner + due)"
+    file: "app/incident/actions/[id].tsx"
+    implemented: true
+    working: "NA"
+    priority: "high"
+    needs_retesting: true
+  - task: "Close-out stage (4-cat checklist + lessons + sign-off)"
+    file: "app/incident/close-out/[id].tsx"
+    implemented: true
+    working: "NA"
+    priority: "high"
+    needs_retesting: true

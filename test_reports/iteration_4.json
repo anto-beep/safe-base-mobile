@@ -1,0 +1,73 @@
+{
+  "summary": "Iteration_4 frontend test of SafeBase Mobile Phase 1A — 5-stage IncidentWorkflow on http://localhost:3000 at 390x844. PARTIAL PASS. /incident register screen verified end-to-end: header 'Incidents' renders, subtitle 'Five-stage workflow…' present (1), red Report-an-incident button (testID report-incident-btn) tappable, stats grid has exactly 8 tiles (Total YTD/Notifiable/Lost Time/Medical/Near Miss/First Aid/Avg days/Open > 30d, all 0 for trades demo as expected), search input (incident-search) present, empty state EmptyState (incident-empty) rendered with shield icon. All 3 filter rows render — filter-stage-triage and filter-sev-3 verified visible. Modules tab incidents tile testID module-incidents routes to /incident NOT /module/incidents (regression PASS). /incident/new wizard Step 1 verified — all 4 INVOLVED_TYPES chips (involved-me / involved-other / involved-property / involved-near_miss) visible; involved-me selectable; Next advances to Step 2. Step 2 verified — description input, category-'Near Miss' chip, ai-categorise button, PhotoPicker showing both Camera and Library buttons. CRITICAL BLOCKER discovered while attempting Step 2→Step 3 navigation: the global floating Concierge widget ('TALK TO ME' yellow pill) intercepts the wizard's step-next button on the mobile viewport at the bottom-right of the screen. Tapping step-next on Step 2 navigates to /concierge (Ask-me-anything page) instead of advancing to Step 3. This blocks the entire submission flow, so Steps 3-6 (hurt/treatment/site/witness), the Reported→Triage→Investigation→Actions→Close-out workflow, and the post-submit Alert dialog for INC-YYYY-#### reference COULD NOT BE EXERCISED end-to-end. The first 'Next' tap (Step 1→Step 2) works because Step 1 content is short and step-next renders above the concierge widget; Step 2's taller content (description multiline + PhotoPicker block) pushes step-next into the floating concierge's hit zone. Repro is 100% on 390x844 viewport using force=True clicks via Playwright (browser hit-testing routes the click to the topmost concierge element). Note: when the user opened /modules then tapped Incidents tile in iter_4 run #1 the wizard also routed away from /incident/new mid-flow with the concierge dialog appearing — same root cause. Action: main agent must add a `pointerEvents=\"none\"` / `position: relative` guard, hide the concierge floating widget on incident-workflow routes (/incident, /incident/new, /incident/triage, /incident/investigation, /incident/actions, /incident/close-out), or move the concierge launcher to the safe-area inset. Recommend keeping it hidden on wizard pages entirely. No backend issues observed during the test — the SafeBase backend at https://safe-systems.preview.emergentagent.com returns 401 on /api/incident-workflow/stats without auth (expected) and the wizard's POST attempt could not be triggered to verify the live response.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Concierge floating widget vs Incident wizard",
+        "issue": "The global 'TALK TO ME' yellow pill (SafeBase Concierge floating launcher, bottom-right) overlaps the wizard's step-next / submit-incident buttons on /incident/new at mobile viewport 390x844. Tapping the step-next button on Step 2 navigates the user to /concierge ('Ask me anything compliance.') because the browser routes the click to the topmost concierge element. This blocks the entire 5-stage incident submission. The same overlap is likely to hit any wizard-style screen with content tall enough to push the primary CTA into the bottom-right corner.",
+        "testID": "step-next / submit-incident",
+        "priority": "CRITICAL"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Report incident → Steps 3-6 → POST /api/incident-workflow → INC-YYYY-#### alert → /incident/{id}",
+        "issue": "Could not be verified end-to-end because the wizard exits to /concierge on the Step 2→3 transition. Steps 3 (hurt), 4 (treatment/ambulance/hospital/work-stopped), 5 (site/state/date/time), 6 (witnesses/submit) and the Alert.alert('Reported', 'Reference INC-…') dialog + redirect to /incident/{id} are blocked.",
+        "affected_testIDs": ["step-next", "hurt-no", "treatment-given-no", "ambulance-no", "hospital-no", "work-stopped-no", "site", "state-NSW", "witnessed-no", "submit-incident"]
+      },
+      {
+        "flow": "Triage / Investigation / Actions / Close-out detail-screen flow",
+        "issue": "Could not be verified because the prerequisite incident creation never completes. stage-cta-triage / stage-cta-investigation / stage-cta-actions / stage-cta-close-out and their child screens (sev-1..sev-6, itype-*, death-*, si-*, do-*, notif-cat, triage-notes, triage-sign, triage-submit, cf-human-Fatigue, cf-supervision-Inadequate planning, root-cause, inv-submit, add-st-*, add-lt-*, st-0-action/owner/due, act-submit, co-*, lessons, co-sign, co-submit) were not exercised. testIDs exist in source per grep — confirmed in /app/frontend/app/incident/triage/[id].tsx, investigation/[id].tsx, actions/[id].tsx, close-out/[id].tsx — but the live flow needs retest after the concierge overlap is resolved.",
+        "affected_testIDs": ["stage-cta-triage", "stage-cta-investigation", "stage-cta-actions", "stage-cta-close-out", "triage-submit", "inv-submit", "act-submit", "co-submit"]
+      }
+    ],
+    "design_issues": [
+      {
+        "screen": "Global floating concierge",
+        "issues": [
+          "Concierge 'TALK TO ME' pill positioned at bottom-right at z-index above page content; covers primary CTAs (step-next / submit-incident / triage-submit / inv-submit / act-submit / co-submit) on tall mobile wizards. Either hide on wizard routes or move into a safe-area-aware container that doesn't overlap the page's primary action button.",
+          "Accessibility-action floating chip (left of concierge) also sits in the same bottom band; combined they steal ~120px of screen real-estate at the bottom of every page."
+        ]
+      }
+    ],
+    "react_native_issues": [
+      {
+        "component": "react-navigation",
+        "issue": "Library still emits warning: 'props.pointerEvents is deprecated. Use style.pointerEvents'. Carry-over from iter_3 — not actionable in this repo, blocked on upstream react-navigation release. Reference: web console during /incident, /incident/new."
+      },
+      {
+        "component": "expo-notifications",
+        "issue": "Warning: '[expo-notifications] Listening to push token changes is not yet fully supported on web. Adding a listener will have no effect.' — expected on web preview, not actionable but worth noting the push-token registration path is not exercised on this platform."
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/test_reports/iteration_4.json",
+    "/app/test_reports/iteration_3.json"
+  ],
+  "action_items": [
+    "PRIORITY-1: Hide or relocate the global 'TALK TO ME' Concierge floating launcher on the Incident workflow routes (/incident, /incident/new, /incident/triage/[id], /incident/investigation/[id], /incident/actions/[id], /incident/close-out/[id]). Suggested: in the launcher's parent component, check usePathname() and return null when the route starts with '/incident'. Alternatively raise the launcher above the keyboard with KeyboardAvoidingView so it doesn't sit over primary CTAs, or move it into a top-right corner away from the wizard's step-next button.",
+    "PRIORITY-2: Re-run this full Phase-1A test plan once the concierge overlap is fixed — focus on Step 2→3 transition, then the submit-incident alert capture (page.once('dialog', ...) — must see type='alert' message starting with 'Reported' and the reference 'INC-YYYY-####'), the /incident/{id} detail screen (Lifecycle + Audit log + __created__ + Submission card + 4 StageCards), and the Triage/Investigation/Actions/Close-out advancement chain with their respective Alert.alert success dialogs.",
+    "PRIORITY-3: Consider also testing on tablet (768x1024) — the concierge launcher may not overlap there but the wizard CTA still needs verification to ensure no other floating element steals the tap."
+  ],
+  "critical_code_review_comments": [
+    "/app/frontend/app/incident/index.tsx: clean, uses useFocusEffect for refresh, stats grid renders 8 Stat tiles via flexWrap grid (24% width, 8 items = 2 rows), filter chips use ChipGroup-style local FilterChip component. testIDs all wired (incident-search, incident-empty, report-incident-btn, filter-stage-*, filter-sev-*).",
+    "/app/frontend/app/incident/new.tsx: 6-step wizard cleanly state-managed via `sub` IncidentSubmission object + setStep(1..6); Next/Back use Math.min/max correctly. submit() calls Incidents.create then Alert.alert('Reported', `Reference ${r.reference}…`, [{onPress: router.replace}]) — alert-web-shim from iter_3 should fire window.alert. Could not verify due to blocker.",
+    "/app/frontend/app/incident/[id].tsx: StageCard testID derived as `stage-cta-${title.toLowerCase().replace(/[^a-z]/g, '-')}` — for 'Close-out' that yields 'stage-cta-close-out' (the hyphen is preserved since [^a-z] matches it but replaces with the same '-'). Verified by grep in source.",
+    "Concierge launcher (likely in app/_layout.tsx or a shared FloatingActionButton component) should respect route boundaries. Recommend `import { usePathname } from 'expo-router'; const path = usePathname(); if (path?.startsWith('/incident')) return null;` to scope hide the launcher on the wizard."
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "NA (frontend-only iteration). Backend at https://safe-systems.preview.emergentagent.com/api/incident-workflow returns 401 unauth → live and responsive.",
+    "frontend": "Partial — Register screen (8/8 acceptance points PASS: header, subtitle, red Report button, 8 stat tiles, search, empty state, filter chips, modules-tile routing). Wizard Steps 1-2 PASS (involved-types, description+ai+category+photopicker). Wizard Steps 3-6, submit alert, detail screen, Triage, Investigation, Actions, Close-out — BLOCKED by concierge overlap (Step 2→3 transition fails). Approximately 35% of the requested acceptance scenarios verified end-to-end."
+  },
+  "seed_data_creation": "None. Used externally-seeded trades.demo@safebase.com.au / Demo@1234.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Phase-1A wizard blocker: floating 'TALK TO ME' Concierge launcher (yellow pill, bottom-right) intercepts the step-next tap on /incident/new Step 2 on 390x844 — tapping step-next navigates to /concierge instead of advancing. Reproduction: login as trades.demo / Demo@1234 → /incident/new → involved-me → step-next (this one works) → fill description, pick 'Near Miss', tap step-next (THIS one routes to /concierge). After main agent hides the concierge on /incident routes, rerun the full test plan from Step 3 onwards. Note that f-strings in the playwright script cannot contain `\\\"` — use intermediate variables for double-quoted selectors. testID prefixes confirmed: involved-{me,other,property,near_miss}, category-{label with spaces}, hurt-{yes,no}, treatment-given-{yes,no}, ambulance/hospital/work-stopped-{yes,no}, state-{NSW,VIC,...}, witnessed-{yes,no}, step-next/step-back/submit-incident, stage-cta-{triage,investigation,actions,close-out}, sev-{1..6}, itype-{key}, death-{yes,no}, si-{label}, do-{label}, notif-cat, triage-{notes,sign,submit,draft,back}, cf-{group_lowercase}-{label}, root-cause, inv-submit, add-st-{label}, add-lt-{label}, st-{i}-{action,owner,due,remove}, act-submit, co-{key}, lessons, co-sign, co-submit. ALSO verified working: login uses testIDs login-email-input / login-password-input / login-submit-button (NOT login-email/-submit). Submit Alert via Alert.alert on web is shimmed to window.alert per iter_3 — page.on('dialog', d=>d.accept()) is required.",
+  "rca_of_issue": "Root cause: a global FloatingActionButton or Concierge launcher (rendered in app/_layout.tsx or a shared ChromeWrapper) is mounted on every authenticated route including /incident/new. On Mobile 390x844 the launcher's hit-box sits at approximately (x: 280..380, y: 740..820) — the same coordinates where the wizard's PrimaryButton 'Next' (testID step-next) lands after Step 2's taller content (description multiline + PhotoPicker block) pushes it lower in the layout. Playwright's force=True click computes the element's center then dispatches a synthetic click; the browser then performs DOM hit-testing and the topmost element under that point is the concierge launcher's TouchableOpacity (higher z-index because it's rendered later in the tree as an absolute-positioned overlay). The launcher's onPress = router.push('/concierge') so the wizard navigates away and the Incident submission state is lost. Mitigation: in the layout component that mounts the concierge launcher, gate its rendering with `const path = usePathname(); if (path?.startsWith('/incident')) return null;` (or guard with a Set of wizard-route prefixes). Alternative: lift the launcher's `bottom` offset to clear the wizard's nav row (e.g. bottom: 120 + safeInsets.bottom on wizard routes), or use pointer-events: none + a smaller hit-box that doesn't overlap the centered step-next button."
+}
