@@ -221,14 +221,90 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Phase 1E COMPLETE — all 22 per-industry screens live + Capture rework + Modules sidebar parity"
-    - "Hospitality (8/8): Temperature Logs, FSS Register, HACCP CCP, Allergens, Cleaning, Suppliers, Liquor/RSA, Inspection Pack"
-    - "Transport (8/8): Pre-trip, Vehicles, Fatigue, FFD, Load Restraint, Mass, CoR Due Diligence, NHVR"
-    - "Healthcare (6/6): AHPRA, Worker Screening, SIRS, NDIS Reportable, ACQSC Evidence, Care Minutes"
-    - "Retail (4/4): Lone Worker, Quick Induct, Customer Incidents, Roster Eligibility"
+    - "Phase 1E-1I MEGA E2E — first live test against awake backend"
+    - "Phase 1E per-industry (26 screens): Hospitality 8, Transport 8, Healthcare 6, Retail 4 + Capture rework + Modules sidebar"
+    - "Phase 1F Settings stack: business/team/billing/notifications/onboarding"
+    - "Phase 1G Workflows: workflows/index hub + workflows/[type]"
+    - "Phase 1H Library + Safety: library/[type], safety/[module]"
+    - "Phase 1I Apps & Add-ons (9): academy, api-keys, automations, branding, mobile-worker, partner, tradecheck, tradeinduct, webhooks"
+    - "Locked-tile gating per industry/entitlements (Capture + Modules)"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
+
+frontend_phase1e_to_1i:
+  - task: "Capture tab — industry-aware quick-capture tiles + LockedTile gating"
+    file: "app/(tabs)/capture.tsx, src/components/LockedTile.tsx"
+    implemented: true
+    working: "NA"
+    priority: "high"
+    needs_retesting: true
+  - task: "Modules tab — sidebar parity with web (industry + cross-industry)"
+    file: "app/(tabs)/modules.tsx"
+    implemented: true
+    working: "NA"
+    priority: "high"
+    needs_retesting: true
+  - task: "Hospitality canonical screens (8): temperature-logs, fss-register, haccp, allergens, cleaning, suppliers, liquor, inspection-pack"
+    file: "app/hospitality/*.tsx"
+    implemented: true
+    working: "NA"
+    priority: "high"
+    needs_retesting: true
+  - task: "Transport canonical screens (8): pretrip, vehicles, fatigue, fitness-for-duty, load-restraint, mass, cor, nhvr"
+    file: "app/transport/*.tsx"
+    implemented: true
+    working: "NA"
+    priority: "high"
+    needs_retesting: true
+  - task: "Healthcare canonical screens (6): ahpra, worker-screening, sirs, ndis, acqsc, care-minutes"
+    file: "app/healthcare/*.tsx"
+    implemented: true
+    working: "NA"
+    priority: "high"
+    needs_retesting: true
+  - task: "Retail canonical screens (4): lone-worker, quick-induct, customer-incidents, roster-eligibility"
+    file: "app/retail/*.tsx"
+    implemented: true
+    working: "NA"
+    priority: "high"
+    needs_retesting: true
+  - task: "Settings stack (5): business, team, billing, notifications, onboarding"
+    file: "app/settings/*.tsx, src/api/extras.ts"
+    implemented: true
+    working: "NA"
+    priority: "medium"
+    needs_retesting: true
+  - task: "Workflows hub + dynamic type screen"
+    file: "app/workflows/index.tsx, app/workflows/[type].tsx"
+    implemented: true
+    working: "NA"
+    priority: "medium"
+    needs_retesting: true
+  - task: "Library dynamic type screen"
+    file: "app/library/[type].tsx"
+    implemented: true
+    working: "NA"
+    priority: "medium"
+    needs_retesting: true
+  - task: "Safety dynamic module screen"
+    file: "app/safety/[module].tsx"
+    implemented: true
+    working: "NA"
+    priority: "medium"
+    needs_retesting: true
+  - task: "Apps & Add-ons (9): academy, api-keys, automations, branding, mobile-worker, partner, tradecheck, tradeinduct, webhooks"
+    file: "app/addons/*.tsx, src/api/extras.ts"
+    implemented: true
+    working: "NA"
+    priority: "medium"
+    needs_retesting: true
+  - task: "API client improvements — 403/404/401 friendly handling"
+    file: "src/api/client.ts"
+    implemented: true
+    working: "NA"
+    priority: "high"
+    needs_retesting: true
 
 agent_communication:
   - agent: "main"
@@ -322,6 +398,67 @@ agent_communication:
 
       Mocked on web preview (carry-over): native SQLite (offline-queue.web.ts
       stub) + push delivery (registration only, APNs/FCM not configured).
+
+  - agent: "main"
+    message: |
+      MEGA SCAFFOLDING PASS — Phase 1E through 1I shipped between
+      iter 3 and this iteration WITHOUT runtime E2E (backend was 404 the
+      entire session). Backend is now confirmed awake (POST /api/auth/login
+      → 200 + JWT for trades.demo). Please run a comprehensive E2E pass
+      against http://localhost:3000.
+
+      Scope (≈43 net-new screens + 2 reworked tab roots):
+        Phase 1E — per-industry canonical screens (26):
+          Hospitality (8): temperature-logs, fss-register, haccp, allergens,
+            cleaning, suppliers, liquor, inspection-pack
+          Transport (8): pretrip, vehicles, fatigue, fitness-for-duty,
+            load-restraint, mass, cor, nhvr
+          Healthcare (6): ahpra, worker-screening, sirs, ndis, acqsc,
+            care-minutes
+          Retail (4): lone-worker, quick-induct, customer-incidents,
+            roster-eligibility
+        Phase 1F — Settings stack (5): business, team, billing,
+          notifications, onboarding
+        Phase 1G — Workflows hub: workflows/index.tsx, workflows/[type].tsx
+        Phase 1H — Library + Safety: library/[type].tsx, safety/[module].tsx
+        Phase 1I — Apps & Add-ons (9 under app/addons/): academy, api-keys,
+          automations, branding, mobile-worker, partner, tradecheck,
+          tradeinduct, webhooks
+        Capture tab REWORKED — industry-aware quick tiles + LockedTile
+        Modules tab REWORKED — sidebar parity with web
+
+      How to test:
+        1. Sign in as trades.demo@safebase.com.au / Demo@1234. Capture +
+           Modules tabs should show trades tiles; cross-industry tiles
+           (workflows/library/safety/settings/apps) should all open and
+           hit real /api/* endpoints. Hospitality/Transport/Healthcare/
+           Retail tiles MUST appear locked (LockedTile) for the trades user.
+        2. Sign in as hospitality.demo@safebase.com.au / Demo@1234.
+           Capture should expose hospitality temp-log + lone-worker tiles;
+           hospitality modules (temperature-logs, fss, haccp, allergens,
+           cleaning, suppliers, liquor, inspection-pack) must open and
+           render real data or empty-states. Industry accent = #E11D48.
+        3. Spot check Transport/Healthcare/Retail demo accounts if time
+           permits; minimally confirm at least 1 list screen per industry
+           loads or shows a friendly 403 (NOT a crash).
+        4. Validate cross-industry screens for every signed-in user:
+             - /workflows (hub) lists catalog + active instances
+             - /library/[type] for at least documents and 1 other type
+             - /safety/[module] for at least 1 module
+             - /settings/business + /settings/team load
+             - /addons/automations + /addons/webhooks + /addons/api-keys load
+        5. Verify 403/404 paths show a friendly Card (per the api/client.ts
+           improvements), not a raw axios crash.
+        6. Re-confirm no Iteration 1/2 regressions: trades accent #FFA630,
+           industry-switcher testID present, Alert.alert shim still
+           functional on web.
+
+      Native-only (NA for web preview): native SQLite, push delivery,
+      Google OAuth, biometric. Mark these NA in the report.
+
+      Known third-party mocks: push-token registration uses a web stub.
+
+      Credentials file: /app/memory/test_credentials.md.
 
   - agent: "main"
     message: |
