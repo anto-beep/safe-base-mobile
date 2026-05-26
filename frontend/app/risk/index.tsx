@@ -74,11 +74,11 @@ export default function RiskRegisterScreen() {
           <TouchableOpacity key={r.item_id} testID={`risk-row-${r.item_id}`} activeOpacity={0.85} onPress={() => router.push({ pathname: "/risk/[id]", params: { id: r.item_id } })} style={styles.row}>
             <View style={styles.rowTop}>
               <Text style={styles.title} numberOfLines={2}>{r.title || "Untitled"}</Text>
-              <LevelPill level={r.inherent_level} score={r.inherent_score} />
+              <LevelPill prefix="INHERENT" level={r.inherent_level} score={r.inherent_score} />
             </View>
             <Text style={styles.meta} numberOfLines={1}>{r.hazard || r.category || "—"}</Text>
             <View style={styles.rowBottom}>
-              <Text style={styles.metaSm}>Inherent: <Text style={styles.metaSmStrong}>{r.inherent_score || "—"}</Text> · Residual: <Text style={styles.metaSmStrong}>{r.residual_score || "—"}</Text></Text>
+              <LevelPill prefix="RESIDUAL" level={r.residual_level} score={r.residual_score} />
               <Text style={styles.metaSm}>{r.responsible_person || r.risk_owner || "—"}</Text>
             </View>
           </TouchableOpacity>
@@ -89,12 +89,12 @@ export default function RiskRegisterScreen() {
   );
 }
 
-function LevelPill({ level, score }: { level?: Level | string; score?: number }) {
-  if (!level) return <Text style={{ color: COLORS.textMuted, fontSize: 11 }}>—</Text>;
+function LevelPill({ level, score, prefix }: { level?: Level | string; score?: number; prefix?: string }) {
+  if (!level) return <Text style={{ color: COLORS.textMuted, fontSize: 11 }}>{prefix ? `${prefix} —` : "—"}</Text>;
   const lv = level as Level;
   return (
     <View style={[styles.lvPill, { backgroundColor: LEVEL_TINT[lv] ?? "#F5F5F4", borderColor: LEVEL_COLOR[lv] ?? TOKENS.border }]}>
-      <Text style={[styles.lvPillText, { color: LEVEL_COLOR[lv] ?? COLORS.textPrimary }]}>{lv.toUpperCase()} · {score ?? "—"}</Text>
+      <Text style={[styles.lvPillText, { color: LEVEL_COLOR[lv] ?? COLORS.textPrimary }]}>{prefix ? `${prefix} · ` : ""}{lv.toUpperCase()} · {score ?? "—"}</Text>
     </View>
   );
 }
