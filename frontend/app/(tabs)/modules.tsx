@@ -87,6 +87,14 @@ export default function ModulesScreen() {
 // added as each module gets its own native screen during the parity build.
 function routeFor(m: ModuleDef): string {
   if (m.slug === "incidents") return "/incident";
+  if (m.slug === "risks") return "/risk";
+  if (m.slug === "workers") return "/workers";
+  if (m.slug === "licences") return "/licences";
+  if (m.slug === "workflows") return "/workflows";
+  if (m.slug === "notifications" || m.slug === "compliance-inbox" || m.slug === "inbox") return "/notifications";
+  if (m.slug === "reports") return "/reports";
+  if (m.slug === "settings-business" || m.slug === "business") return "/settings/business";
+  if (m.slug === "settings-notifications") return "/settings/notifications";
   return `/module/${encodeURIComponent(m.slug)}`;
 }
 

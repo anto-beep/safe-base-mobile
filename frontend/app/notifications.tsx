@@ -1,198 +1,99 @@
+// Compliance Inbox — /api/notifications. Mark single + mark-all-read.
 import { Ionicons } from "@expo/vector-icons";
-import { router, Stack, useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useState } from "react";
-import {
-  ActivityIndicator,
-  FlatList,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Stack, useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback, useState } from "react";
+import { ActivityIndicator, Alert, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { api } from "@/src/api/client";
-import { EmptyState, Eyebrow, ScreenHeader } from "@/src/components/ui";
-import { useAuth } from "@/src/context/AuthContext";
-import { accentFor, COLORS } from "@/src/theme/colors";
+import { Notification, NotificationsApi } from "@/src/api/safebase";
+import { Card, EmptyState, MONO, ScreenHeader, SecondaryButton } from "@/src/components/ui";
+import { COLORS, TOKENS, useAccent } from "@/src/theme/colors";
 
-interface NotificationItem {
-  id?: string;
-  notification_id?: string;
-  title?: string;
-  body?: string;
-  message?: string;
-  unread?: boolean;
-  read?: boolean;
-  read_at?: string | null;
-  cta_path?: string;
-  created_at?: string;
-  category?: string;
+function toneFor(n: Notification): { bg: string; fg: string; icon: keyof typeof Ionicons.glyphMap } {
+  const t = n.tone || n.severity || n.tag || "info";
+  if (t === "critical" || t === "error") return { bg: "#FEE2E2", fg: "#B91C1C", icon: "alert-circle" };
+  if (t === "expiry" || t === "warning") return { bg: "#FEF3C7", fg: "#B45309", icon: "warning" };
+  return { bg: "#EFF6FF", fg: "#1E40AF", icon: "information-circle" };
 }
 
-export default function Notifications() {
-  const { user } = useAuth();
+export default function NotificationsInbox() {
+  const accent = useAccent();
   const router = useRouter();
-  const accent = accentFor(user?.industry);
-  const [items, setItems] = useState<NotificationItem[]>([]);
+  const [rows, setRows] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
-    try {
-      const resp = await api.get<any>("/notifications");
-      const list: NotificationItem[] = resp?.items ?? resp?.notifications ?? resp ?? [];
-      setItems(Array.isArray(list) ? list : []);
-    } catch (e: any) {
-      setError(e?.detail ?? "Unable to load notifications.");
-      setItems([]);
-    } finally {
-      setLoading(false);
-    }
+    try { setRows(await NotificationsApi.list()); }
+    catch (e: any) { setError(e?.detail ?? "Could not load notifications."); }
+    finally { setLoading(false); setRefreshing(false); }
   }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      setLoading(true);
-      load();
-    }, [load]),
-  );
+  useFocusEffect(useCallback(() => { setLoading(true); load(); }, [load]));
 
-  const markRead = async (n: NotificationItem) => {
-    const id = n.notification_id ?? n.id;
-    if (!id) return;
-    try {
-      await api.post(`/notifications/${id}/read`);
-      setItems((prev) =>
-        prev.map((x) => ((x.notification_id ?? x.id) === id ? { ...x, read: true, unread: false } : x)),
-      );
-    } catch {
-      // ignore
-    }
+  const markAll = async () => {
+    try { await NotificationsApi.markAllRead(); load(); }
+    catch (e: any) { Alert.alert("Failed", e?.detail ?? ""); }
   };
 
-  const markAllRead = async () => {
-    try {
-      await api.post("/notifications/read-all");
-      setItems((prev) => prev.map((x) => ({ ...x, read: true, unread: false })));
-    } catch {
-      // ignore
+  const open = async (n: Notification) => {
+    if (n.notification_id && !n.read) {
+      try { await NotificationsApi.markRead(n.notification_id); } catch { /* noop */ }
     }
+    if (n.incident_id) router.push({ pathname: "/incident/[id]", params: { id: n.incident_id } });
+    else if (n.link?.includes("licences")) router.push("/licences");
+    else if (n.link?.includes("incidents")) router.push("/incident");
+    else if (n.link?.includes("risks")) router.push("/risk");
+    else load();
   };
+
+  const unread = rows.filter((r) => !r.read).length;
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <Stack.Screen options={{ headerShown: false }} />
-      <View style={styles.headerPad}>
-        <TouchableOpacity testID="notif-back" onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={22} color={COLORS.textSecondary} />
-          <Text style={styles.backText}>Back</Text>
-        </TouchableOpacity>
-        <ScreenHeader
-          eyebrow="Inbox"
-          title="Notifications"
-          subtitle="Industry alerts, regulator deadlines and team activity."
-          accent={accent}
-          right={
-            items.some((x) => x.unread || !x.read) ? (
-              <TouchableOpacity testID="notif-mark-all" onPress={markAllRead} style={styles.readAllBtn}>
-                <Text style={[styles.readAllText, { color: accent }]}>READ ALL</Text>
-              </TouchableOpacity>
-            ) : null
-          }
-        />
-      </View>
+      <ScrollView contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} tintColor={accent} />}>
+        <TouchableOpacity testID="notif-back" style={styles.back} onPress={() => router.back()}><Ionicons name="chevron-back" size={22} color={COLORS.textSecondary} /></TouchableOpacity>
+        <ScreenHeader eyebrow="Compliance" title="Inbox" subtitle={`${rows.length} total · ${unread} unread`} accent={accent} />
+        {unread > 0 ? <SecondaryButton testID="notif-mark-all" label="Mark all read" onPress={markAll} iconName="checkmark-done" /> : null}
+        <View style={{ height: 12 }} />
 
-      {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator color={accent} />
-        </View>
-      ) : (
-        <FlatList
-          testID="notifications-list"
-          data={items}
-          keyExtractor={(item, idx) => String(item.notification_id ?? item.id ?? idx)}
-          contentContainerStyle={{ padding: 20, paddingTop: 0, paddingBottom: 40 }}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={async () => {
-              setRefreshing(true);
-              await load();
-              setRefreshing(false);
-            }} tintColor={accent} />
-          }
-          ListEmptyComponent={
-            error ? (
-              <EmptyState
-                testID="notif-error"
-                icon="cloud-offline-outline"
-                title="Couldn't load inbox"
-                body={error}
-              />
-            ) : (
-              <EmptyState
-                testID="notif-empty"
-                icon="checkmark-done-circle-outline"
-                title="You're all clear"
-                body="No notifications yet. We'll ping you here when SafeBase needs your attention."
-              />
-            )
-          }
-          renderItem={({ item, index }) => {
-            const unread = item.unread || !item.read;
-            return (
-              <TouchableOpacity
-                testID={`notif-row-${index}`}
-                style={[styles.row, unread && { borderLeftColor: accent, borderLeftWidth: 4 }]}
-                activeOpacity={0.85}
-                onPress={() => {
-                  markRead(item);
-                  if (item.cta_path) router.push(item.cta_path as any);
-                }}
-              >
-                <Ionicons
-                  name={unread ? "notifications" : "notifications-outline"}
-                  size={20}
-                  color={unread ? accent : COLORS.textMuted}
-                />
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={styles.title} numberOfLines={2}>
-                    {item.title ?? "SafeBase update"}
-                  </Text>
-                  <Text style={styles.body} numberOfLines={3}>
-                    {item.body ?? item.message ?? ""}
-                  </Text>
-                  {item.category ? <Eyebrow color={COLORS.textMuted}>{item.category}</Eyebrow> : null}
+        {loading ? <ActivityIndicator color={accent} style={{ marginTop: 30 }} /> : error ? <Card><Text style={styles.err}>{error}</Text></Card> : rows.length === 0 ? (
+          <EmptyState icon="mail-open-outline" title="Inbox empty" body="Compliance events will appear here as they happen." />
+        ) : rows.map((n, i) => {
+          const tone = toneFor(n);
+          return (
+            <TouchableOpacity key={n.notification_id ?? i} testID={`notif-row-${i}`} activeOpacity={0.85} onPress={() => open(n)} style={[styles.row, n.read ? { opacity: 0.7 } : null]}>
+              <View style={[styles.icon, { backgroundColor: tone.bg }]}><Ionicons name={tone.icon} size={18} color={tone.fg} /></View>
+              <View style={{ flex: 1 }}>
+                <View style={styles.rowTop}>
+                  <Text style={styles.title} numberOfLines={1}>{n.title}</Text>
+                  {!n.read ? <View style={[styles.dot, { backgroundColor: accent }]} /> : null}
                 </View>
-                <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
-              </TouchableOpacity>
-            );
-          }}
-        />
-      )}
+                <Text style={styles.body} numberOfLines={2}>{n.body}</Text>
+                <Text style={styles.meta}>{n.created_at ? new Date(n.created_at).toLocaleString("en-AU") : "—"} · {(n.tag || n.type || "info").toUpperCase()}</Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+        <View style={{ height: 60 }} />
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.appBg },
-  headerPad: { padding: 20, paddingBottom: 0 },
-  backBtn: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
-  backText: { color: COLORS.textSecondary, fontSize: 14 },
-  center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  readAllBtn: { borderWidth: 1, borderColor: COLORS.border, paddingHorizontal: 10, paddingVertical: 6 },
-  readAllText: { fontSize: 11, fontWeight: "800", letterSpacing: 1.2 },
-  row: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    padding: 14,
-    marginBottom: 10,
-  },
-  title: { color: COLORS.textPrimary, fontSize: 15, fontWeight: "700" },
-  body: { color: COLORS.textSecondary, fontSize: 13, lineHeight: 18, marginTop: 4 },
+  safe: { flex: 1, backgroundColor: TOKENS.background },
+  content: { padding: 20, paddingBottom: 40 },
+  back: { padding: 4, marginBottom: 6 },
+  row: { flexDirection: "row", borderWidth: 1, borderColor: TOKENS.border, padding: 12, marginBottom: 10, backgroundColor: TOKENS.background },
+  icon: { width: 36, height: 36, alignItems: "center", justifyContent: "center", marginRight: 12 },
+  rowTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  title: { color: TOKENS.ink, fontSize: 14, fontWeight: "700", flex: 1, marginRight: 6 },
+  body: { color: COLORS.textSecondary, fontSize: 12, marginTop: 4, lineHeight: 17 },
+  meta: { color: COLORS.textMuted, fontSize: 10, marginTop: 6, fontFamily: MONO, letterSpacing: 0.6 },
+  dot: { width: 8, height: 8, borderRadius: 4 },
+  err: { color: TOKENS.destructive, fontSize: 14 },
 });

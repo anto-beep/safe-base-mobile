@@ -329,7 +329,105 @@ agent_communication:
 
   - agent: "main"
     message: |
-      PHASE 1A delivered: Incidents end-to-end (5-stage IncidentWorkflow).
+      PHASE 1B (cross-industry spine) delivered. Screens ship with full field
+      parity, status pills, expiry awareness, and the Iter57 actions where
+      backend supports them.
+
+      New screens (all wired to live SafeBase backend):
+        - /app/risk/index.tsx — Risk register w/ 5×5 filter, level pills,
+          inherent/residual scores per row
+        - /app/risk/new.tsx (REWRITE) — full field set (category/activity/
+          process/hazard/consequence_text/existing_controls/proposed_controls/
+          responsible_person/due_date/review_frequency/hrcw_flags) + corrected
+          RiskMatrix thresholds (≤4/≤9/≤15 per backend _compute_risk_level)
+        - /app/risk/[id].tsx — Risk detail w/ both matrices read-only + delete
+        - /app/workers/index.tsx + /app/workers/new.tsx — full WorkerIn shape
+        - /app/licences/index.tsx + /app/licences/new.tsx — status pills
+          (active/expiring_soon/expired), days_until_expiry meta, Iter57
+          "Remind" action wired to POST /api/licences/{id}/remind, delete
+        - /app/notifications.tsx — Compliance Inbox w/ tone routing, link
+          smart-jumps to /incident/{id}, /licences, /risk
+        - /app/reports/index.tsx + /app/reports/[type].tsx — all 10 report
+          types from /api/reports rendered generically (scalars + arrays +
+          objects, first 25–50 rows + foot)
+        - /app/(tabs)/modules.tsx — routeFor() now maps risks, workers,
+          licences, workflows, notifications, reports, settings/* to their
+          native screens
+
+      Foundation updates:
+        - /src/api/safebase.ts — typed wrappers (Workers, Licences, Safety,
+          Notifications, Settings, Reports, Workflows, Compliance)
+        - /src/components/RiskMatrix.tsx — thresholds fixed to match backend
+          (≤4 low, ≤9 medium, ≤15 high, else extreme)
+
+      Smoke-screenshotted /risk, /workers, /licences, /notifications,
+      /reports, /workflows after login — all render with real data (4 demo
+      workers + 6 demo licences from the live backend).
+
+      Native-only NOT validated on web preview: native SQLite, camera capture,
+      push notification delivery, biometric, Google OAuth (carry-over).
+
+      Outstanding work (Phase 1C-E):
+        - Phase 1C — 5 industry Home dashboards (currently the app/(tabs)/
+          index.tsx is industry-aware but minimal; needs widget integration
+          with /api/dashboard/widget/* per industry).
+        - Phase 1D — per-industry modules (~50-60 screens across Hospitality
+          temp/HACCP/Cleaning/FSS/Liquor/Allergens/Suppliers; Transport
+          fleet/pretrip/fatigue/FFD/load/mass/NHVR/CoR; Healthcare AHPRA/
+          care minutes/ACQSC/SIRS/NDIS/screening; Retail lone-worker/
+          customer incidents/quick-induct/roster; Trades workers/licences/
+          SWMS/TradeCheck/Induct/competency/inspections/plant/risks/toolbox).
+        - Phase 1E — capture flow polish + admin stack.
+
+frontend_phase1b:
+  - task: "API client wrapper for cross-industry endpoints"
+    file: "src/api/safebase.ts"
+    implemented: true
+    working: "NA"
+    priority: "high"
+    needs_retesting: true
+  - task: "Risk Register list + 5×5 filter + level pills"
+    file: "app/risk/index.tsx"
+    implemented: true
+    working: "NA"
+    priority: "high"
+    needs_retesting: true
+  - task: "Risk creator with full field set + matrix thresholds fix"
+    file: "app/risk/new.tsx, src/components/RiskMatrix.tsx"
+    implemented: true
+    working: "NA"
+    priority: "high"
+    needs_retesting: true
+  - task: "Risk detail w/ both matrices read-only"
+    file: "app/risk/[id].tsx"
+    implemented: true
+    working: "NA"
+    priority: "medium"
+    needs_retesting: true
+  - task: "Workers register + new"
+    file: "app/workers/index.tsx, app/workers/new.tsx"
+    implemented: true
+    working: "NA"
+    priority: "high"
+    needs_retesting: true
+  - task: "Licences register + new + Iter57 remind action"
+    file: "app/licences/index.tsx, app/licences/new.tsx"
+    implemented: true
+    working: "NA"
+    priority: "high"
+    needs_retesting: true
+  - task: "Notifications inbox (mark read / mark all)"
+    file: "app/notifications.tsx"
+    implemented: true
+    working: "NA"
+    priority: "high"
+    needs_retesting: true
+  - task: "Reports index + report viewer (10 report types)"
+    file: "app/reports/index.tsx, app/reports/[type].tsx"
+    implemented: true
+    working: "NA"
+    priority: "medium"
+    needs_retesting: true
       Endpoints used (all live, verified): GET/POST /api/incident-workflow,
       /api/incident-workflow/stats, /api/incident-workflow/{id},
       PATCH .../triage|investigation|actions|close-out, POST .../reopen,

@@ -1,10 +1,10 @@
 // 5×5 risk matrix — pixel-faithful to the SafeBase web app.
 // Scoring formula: score = likelihood × consequence
-// Level thresholds (from /tmp/safebase-src/backend/risk_module.py:337):
-//   ≤5  = low      (success green)
-//   ≤11 = medium   (warning amber)
-//   ≤19 = high     (orange)
-//   >19 = extreme  (destructive red)
+// Level thresholds (from /tmp/safebase_ref/backend/server.py:_compute_risk_level):
+//   ≤4  = low      (success green)
+//   ≤9  = medium   (warning amber)
+//   ≤15 = high     (orange)
+//   >15 = extreme  (destructive red)
 
 import React from "react";
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -17,9 +17,9 @@ export type Level = "low" | "medium" | "high" | "extreme";
 
 export function riskLevel(score: number): Level | null {
   if (!score) return null;
-  if (score <= 5) return "low";
-  if (score <= 11) return "medium";
-  if (score <= 19) return "high";
+  if (score <= 4) return "low";
+  if (score <= 9) return "medium";
+  if (score <= 15) return "high";
   return "extreme";
 }
 
