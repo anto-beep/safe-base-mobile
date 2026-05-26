@@ -329,7 +329,61 @@ agent_communication:
 
   - agent: "main"
     message: |
-      PHASE 1B (cross-industry spine) delivered. Screens ship with full field
+      PHASE 1C delivered: 5 industry Owner Home dashboards via a single
+      industry-agnostic OwnerHome component in app/(tabs)/index.tsx. Each
+      industry rotates accent + pillars + alert tile dynamically through
+      the live SafeBase endpoints — no per-industry code paths needed.
+
+      6-block layout per spec:
+        1. Eyebrow + greeting + industry tagline
+        2. Industry Alert Tile (Iter57 actionable; component picks correct
+           /api/dashboard/widget/* per industry: temp-alert | fatigue-alert |
+           credential-expiry | lone-worker | ahpra-expiry)
+        3. KPI row (4 tiles): open-incidents / workflows-live /
+           expiring-soon / inbox-unread — all tappable, route to native
+           Phase 1A/1B screens
+        4. Compliance score card: large numeric + band + per-pillar
+           horizontal bars rendered from /api/compliance/score sub_scores
+           (parity-faithful to web — pillars are named per industry by the
+           backend: trades shows Documents/Incidents/Training/Licences/Site
+           Safety; hospitality shows WHS Docs/Food Safety/Staff
+           Certifications/Incident Mgmt/Venue Safety; transport/healthcare/
+           retail render their own pillar set)
+        5. Open this week: top 5 open incidents from /api/incident-workflow
+           with reference + title + stage + days-open + severity badge
+           (or empty-state "Nothing open · Every incident is closed. Keep it
+           that way.")
+        6. Quick capture row: existing 2-tile grid per industry (incident/
+           swms/temp/pretrip/fitness/lone-worker/etc.)
+
+      Parallel loads with per-source try/catch so one degraded endpoint
+      cannot blank the home. Pull-to-refresh re-fetches all 5 sources.
+
+      Verified via screenshot pass:
+        - trades.demo: amber #FFA630 throughout, Credential Expiry tile,
+          compliance 71 with 5 trade pillars
+        - hospitality.demo: red #E11D48 throughout, Temperature Alert tile,
+          compliance 75 with hospitality pillars
+        - Transport/Healthcare/Retail dashboards share the same render path
+          and consume their respective backend widgets; they will look
+          identical to trades/hospo styled with their own accent + pillars.
+
+      All Phase 1A/1B/1C screens now interlinked: home KPI tiles → /incident,
+      /workflows, /licences, /notifications.
+
+frontend_phase1c:
+  - task: "Industry Owner Home dashboard (6-block parity)"
+    file: "app/(tabs)/index.tsx"
+    implemented: true
+    working: "NA"
+    priority: "high"
+    needs_retesting: true
+  - task: "Industry alert tile rotates per industry via dashboard widget"
+    file: "src/components/IndustryAlertTile.tsx"
+    implemented: true
+    working: "NA"
+    priority: "medium"
+    needs_retesting: true
       parity, status pills, expiry awareness, and the Iter57 actions where
       backend supports them.
 
