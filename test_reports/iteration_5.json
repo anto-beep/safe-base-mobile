@@ -1,0 +1,44 @@
+{
+  "summary": "Iteration_5 frontend retest of Phase 1A Incidents end-to-end on http://localhost:3000 at 390x844. FULL PASS. The iter_4 BLOCKER is resolved: /app/frontend/src/components/FloatingOverlays.tsx now imports usePathname and hides the concierge `[data-testid=concierge-fab]` on routes whose path starts with /incident, /capture, or /chat. Verified on the live preview: concierge-fab is present on home (/(tabs)/) and HIDDEN on /incident/new (and every subsequent /incident/* stage screen), while the Accessibility FAB `a11y-fab` still renders on every screen. Walked the entire 6-step submission wizard with the trades.demo account: Step1 involved-me → Step2 description+category-'Near Miss' → Step3 hurt-no → Step4 treatment-given/ambulance/hospital/work-stopped all no → Step5 site 'TEST Site Alpha' + state-NSW + date 2026-01-15 + time 10:30 → Step6 witnessed-no + other-info → submit-incident. Submission produced reference INC-2026-0001 and Alert.alert dialog was accepted via page.on('dialog', d=>d.accept()), redirecting to /incident/inc_c77c1b97af. Detail screen renders: header 'INC-2026-0001 · Worker tripped over loose cable in workshop, no injury.', SEV-3 badge, LIFECYCLE card with 5 rows (Reported/Triage/Investigation/Actions/Closed), SUBMISSION card with all entered values, gating copy 'Complete the previous stage to unlock.' for Investigation/Actions/Close-out cards, Triage card with CURRENT pill and 'Start triage' CTA testID stage-cta-triage. Triage advance: sev-3 + itype-first_aid_injury produced the 'not notifiable' green banner; triage-notes + triage-sign 'Auto Tester' + triage-submit → 'Triage complete' Alert → redirect to detail where the severity badge reads 'SEV 3', Triage card shows DONE pill and Investigation card shows CURRENT. Investigation advance: cf-human-Fatigue + cf-supervision-Inadequate planning chips tapped, root-cause filled (>10 chars), inv-submit → success Alert → redirect. Corrective Actions advance: stage-cta-corrective-actions opens the screen, add-st-'Remove hazard immediately' and add-lt-'Update safety management system' chips work, st-0-action filled, act-submit → success Alert → redirect. Close-out: stage-cta-close-out opens the form (after locator.last to skip the disabled-card placeholder; main agent may want to confirm the duplicate testID), all 4 sections (regulatory/investigation/actions/documentation) received 2 ticks each via co-{cat}::{item} testIDs, lessons + co-sign + co-submit → 'Incident closed' Alert → redirect to detail where the status pill reads 'CLOSED', all 5 lifecycle rows are dated 26/05/2026, stage-cta-close-out now renders the 'RE-OPEN' label (verified via document.querySelectorAll('[data-testid^=stage-cta-]') innerText scrape). Regression sweep PASS: modules tab `[data-testid=module-incidents]` tile still routes to /incident (NOT /module/incidents). Profile `[data-testid=profile-logout-button]` sign-out works (Alert.alert → window.confirm shim accepted → redirect to /login). Hospitality demo login (hospitality.demo@safebase.com.au) home renders 8+ elements with computed colour rgb(225,29,72) = #E11D48, confirming the hospitality accent is intact. Recommend main agent ships the FAB-gating fix as-is. Deprecated-library warnings noted (no app-side action required): react-navigation 'props.pointerEvents is deprecated' and '[expo-notifications] Listening to push token changes is not yet fully supported on web' — both carry-over from previous iterations and out of scope here.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": [
+      {
+        "component": "react-navigation",
+        "issue": "Warning emitted on every navigation: 'props.pointerEvents is deprecated. Use style.pointerEvents'. Originates from inside react-navigation. Not actionable in this repo (waiting on upstream)."
+      },
+      {
+        "component": "expo-notifications",
+        "issue": "Warning: '[expo-notifications] Listening to push token changes is not yet fully supported on web.' Expected on web preview; push-token registration path can only be exercised on a native build."
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/test_reports/iteration_5.json",
+    "/app/test_reports/iteration_4.json"
+  ],
+  "action_items": [
+    "OPTIONAL: stage-cta-close-out testID resolved to 2 DOM elements on the detail screen — the disabled placeholder card and the active CTA both render the same testID. Playwright handled this with `.last`, but consider differentiating (e.g., suppress the testID on the disabled state, or suffix with `-disabled`) so future tests don't have to know about the duplicate. Reference: /app/frontend/app/incident/[id].tsx:238 (StageCard renders the PrimaryButton even when gated)."
+  ],
+  "critical_code_review_comments": [
+    "/app/frontend/src/components/FloatingOverlays.tsx: clean implementation — usePathname + HIDE_ON_PREFIXES startsWith check is the right pattern; A11y FAB stays mounted because it doesn't overlap primary CTAs. Consider extending HIDE_ON_PREFIXES if other long-form wizards are added (e.g. /report, /audit). Comment block at lines 11-23 documents the rationale clearly.",
+    "Duplicate testID on stage-cta-close-out (one in the gated/disabled stub, one in the active CTA) — see action_items.",
+    "Close-out testIDs use raw catalogue strings (co-regulatory::Notifiability has been assessed...). Works, but `::` and spaces are awkward in CSS selectors. The test had to use `document.querySelector` with attribute quoting to click them. Consider slugging the keys (e.g., co-regulatory-notifiability-assessed) for selector ergonomics."
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "NA (frontend-only iteration). All POST /api/incident-workflow/* calls succeeded — incident inc_c77c1b97af created, triage/investigation/actions/close-out all returned success Alerts and redirected.",
+    "frontend": "100% — full 6-step submission wizard PASS, all 4 stage advances PASS (Triage → Investigation → Corrective Actions → Close-out), CLOSED state + Re-open CTA verified, modules-tile routing regression PASS, profile sign-out PASS, hospitality #E11D48 accent regression PASS. The iter_4 concierge-FAB blocker is fully resolved."
+  },
+  "seed_data_creation": "Created one incident via the UI for verification: reference INC-2026-0001, id inc_c77c1b97af, on trades.demo account, closed-out. Test-tagged with 'TEST Site Alpha' / 'Test created by automated test agent iteration 5.'. Safe to leave in place or delete depending on backend cleanup policy.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Phase 1A Incidents workflow is fully verified end-to-end. Concierge FAB is gated by HIDE_ON_PREFIXES in /app/frontend/src/components/FloatingOverlays.tsx — if any new long-form capture flow is added that uses a bottom-anchored CTA, extend that array. Useful selectors confirmed in this iteration: login uses login-email-input/login-password-input/login-submit-button; submit alerts are window.alert shims (page.on('dialog', d.accept())); stage-cta IDs derive from `title.toLowerCase().replace(/[^a-z]/g, '-')` — close-out → 'stage-cta-close-out', corrective actions → 'stage-cta-corrective-actions'; stage-cta-close-out renders twice (disabled stub + active) so use locator.last when targeting it; close-out checkbox testIDs are 'co-{category}::{item text}' (use document.querySelector with the full string); hospitality accent #E11D48 = rgb(225,29,72) is intact; module-incidents tile correctly routes to /incident.",
+  "rca_of_issue": "Iter_4 RCA was correct: a bottom-anchored absolute-positioned floating launcher (concierge-fab) intercepted the wizard's PrimaryButton step-next because both shared the bottom-right hit zone on 390x844 once the wizard's content grew past the fold. Main agent's fix correctly scopes the launcher via usePathname() and a HIDE_ON_PREFIXES allow-list, returning null for the FAB on /incident, /capture, /chat. The Accessibility FAB (bottom-left) is left rendering because its hit-zone never overlaps a primary CTA. Verified on every wizard step and on each of the 4 stage screens in iter_5."
+}

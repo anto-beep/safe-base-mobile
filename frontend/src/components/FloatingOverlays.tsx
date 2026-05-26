@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { usePathname, useRouter } from "expo-router";
 import { useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
@@ -10,27 +10,46 @@ import { COLORS, TOKENS, accentFor } from "@/src/theme/colors";
 
 // Floating concierge chat + accessibility controls. Mounted globally.
 // Visible only while a customer is signed in.
+//
+// HIDE_ON: long-form data-capture flows where the FAB physically collides
+// with the primary CTA at the bottom of the viewport (the floating button is
+// fixed bottom-right and would intercept "Next"/"Submit"/"Sign off" taps
+// after the wizard's content grows past the fold). Tested manually +
+// flagged by testing_agent iter_4. Keep this list short and explicit.
+const HIDE_ON_PREFIXES = [
+  "/incident", // 6-step submission wizard + 4 stage forms + close-out
+  "/capture", // existing offline capture screens
+  "/chat", // the concierge screen itself
+];
+
 export function FloatingOverlays() {
   const { user } = useAuth();
   const [a11yOpen, setA11yOpen] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
   const accent = accentFor(user?.industry);
 
   if (!user) return null;
+  // Hide the FAB on long-form capture / wizard flows to avoid intercepting
+  // their bottom-anchored primary CTA. The Accessibility FAB (bottom-left)
+  // stays visible because it never overlaps a primary action.
+  const hideChat = HIDE_ON_PREFIXES.some((p) => pathname?.startsWith(p));
 
   return (
     <>
       {/* Concierge chat — bottom right, ALWAYS ink bg + warning yellow text.
           The chat surface is industry-neutral by design. */}
-      <TouchableOpacity
-        testID="concierge-fab"
-        onPress={() => router.push("/chat")}
-        activeOpacity={0.85}
-        style={[styles.chatFab, { backgroundColor: TOKENS.ink }]}
-      >
-        <Ionicons name="chatbubble-ellipses" size={22} color={TOKENS.warning} />
-        <Text style={[styles.chatLabel, { color: TOKENS.warning }]}>TALK TO ME</Text>
-      </TouchableOpacity>
+      {!hideChat ? (
+        <TouchableOpacity
+          testID="concierge-fab"
+          onPress={() => router.push("/chat")}
+          activeOpacity={0.85}
+          style={[styles.chatFab, { backgroundColor: TOKENS.ink }]}
+        >
+          <Ionicons name="chatbubble-ellipses" size={22} color={TOKENS.warning} />
+          <Text style={[styles.chatLabel, { color: TOKENS.warning }]}>TALK TO ME</Text>
+        </TouchableOpacity>
+      ) : null}
 
       {/* Accessibility — bottom left, ALWAYS authority blue (never industry-themed). */}
       <TouchableOpacity
