@@ -5,9 +5,11 @@ import { useEffect } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { FloatingOverlays } from "@/src/components/FloatingOverlays";
+import { TrialBanner } from "@/src/components/TrialBanner";
 import { AccessibilityProvider } from "@/src/context/AccessibilityContext";
 import { AdminAuthProvider } from "@/src/context/AdminAuthContext";
 import { AuthProvider } from "@/src/context/AuthContext";
+import { BillingProvider } from "@/src/context/BillingContext";
 import { useIconFonts } from "@/src/hooks/use-icon-fonts";
 import { installAlertWebShim } from "@/src/lib/alert-web-shim";
 import { startBackgroundSync } from "@/src/lib/offline-queue";
@@ -45,15 +47,18 @@ export default function RootLayout() {
       <AccessibilityProvider>
         <AuthProvider>
           <AdminAuthProvider>
-            <StatusBar style="dark" />
-            <Stack
-              screenOptions={{
-                headerShown: false,
-                contentStyle: { backgroundColor: "#FFFFFF" },
-                animation: "fade",
-              }}
-            />
-            <FloatingOverlays />
+            <BillingProvider>
+              <StatusBar style="dark" />
+              <Stack
+                screenOptions={{
+                  headerShown: false,
+                  contentStyle: { backgroundColor: "#FFFFFF" },
+                  animation: "fade",
+                }}
+              />
+              <TrialBanner />
+              <FloatingOverlays />
+            </BillingProvider>
           </AdminAuthProvider>
         </AuthProvider>
       </AccessibilityProvider>

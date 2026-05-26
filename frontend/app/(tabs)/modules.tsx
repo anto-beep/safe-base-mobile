@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { LockedTile } from "@/src/components/LockedTile";
 import { Eyebrow, ScreenHeader } from "@/src/components/ui";
 import { useAuth } from "@/src/context/AuthContext";
+import { ALL_INDUSTRIES, useBilling } from "@/src/context/BillingContext";
 import { accentFor, COLORS, INDUSTRY_LABEL, Industry, TOKENS } from "@/src/theme/colors";
 
 interface ModuleDef {
@@ -124,22 +125,14 @@ const ADDONS: ModuleDef[] = [
   { slug: "addon-api", label: "API keys", sub: "Universal API access", icon: "key-outline", locked: true },
 ];
 
-// ---------- Settings section ----------
-const SETTINGS: ModuleDef[] = [
-  { slug: "settings-business", label: "Business profile", sub: "ABN, address, ANZSIC", icon: "business-outline", locked: true },
-  { slug: "settings-notifications", label: "Notification settings", sub: "Channels & schedules", icon: "notifications-outline", locked: true },
-  { slug: "settings-team", label: "Team & invites", sub: "Roles + access", icon: "people-outline", locked: true },
-  { slug: "settings-onboarding", label: "Onboarding", sub: "Setup checklist", icon: "checkmark-circle-outline", locked: true },
-  { slug: "settings-billing", label: "Billing & plan", sub: "Subscription + invoices", icon: "card-outline", locked: true },
-  { slug: "settings-demos", label: "Demo requests", sub: "Marketing inbox", icon: "mail-outline", locked: true },
-];
+// ---------- Settings section moved to its own tab — no longer rendered here ----------
 
 export default function ModulesScreen() {
   const { user } = useAuth();
   const router = useRouter();
-  const industry = (user?.industry as Industry | undefined) ?? "trades";
-  const accent = accentFor(industry);
-  const industryModules = INDUSTRY_MODULES[industry] ?? [];
+  const { isUnlocked, statusFor, ready } = useBilling();
+  const primary = (user?.industry as Industry | undefined) ?? "trades";
+  const accent = accentFor(primary);
 
   const open = (m: ModuleDef) => {
     if (m.locked || !m.href) {
@@ -150,23 +143,75 @@ export default function ModulesScreen() {
     router.push(m.href as any);
   };
 
+  // Industries other than primary that the user can currently use.
+  const unlockedExtras: Industry[] = ALL_INDUSTRIES.filter(
+    (i) => i !== primary && isUnlocked(i),
+  ) as Industry[];
+
+  // Industries the user is NOT entitled to — surfaced as locked tiles below.
+  const lockedExtras: Industry[] = ALL_INDUSTRIES.filter(
+    (i) => i !== primary && !isUnlocked(i),
+  ) as Industry[];
+
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.content}>
         <ScreenHeader
-          eyebrow={INDUSTRY_LABEL[industry]}
+          eyebrow={INDUSTRY_LABEL[primary]}
           title="Modules"
           subtitle="Every compliance area in one tap. Mirrors your SafeBase web workspace."
           accent={accent}
         />
 
-        <Section label={INDUSTRY_LABEL[industry]} accent={accent} modules={industryModules} onPress={open} />
+        <Section label={INDUSTRY_LABEL[primary]} accent={accent} modules={INDUSTRY_MODULES[primary] ?? []} onPress={open} />
+
+        {/* Unlocked extra industries (paid OR trial) — show their modules inline */}
+        {unlockedExtras.map((ind) => {
+          const st = statusFor(ind);
+          const extra = st.kind === "trial" ? ` · TRIAL · ${st.daysLeft ?? 0}D LEFT` : "";
+          return (
+            <Section
+              key={ind}
+              label={`${INDUSTRY_LABEL[ind]}${extra}`}
+              accent={accent}
+              modules={INDUSTRY_MODULES[ind] ?? []}
+              onPress={open}
+            />
+          );
+        })}
+
         <Section label="Core" accent={accent} modules={CORE} onPress={open} />
         <Section label="Safety" accent={accent} modules={SAFETY} onPress={open} />
         <Section label="Workflows" accent={accent} modules={WORKFLOWS} onPress={open} />
         <Section label="Library" accent={accent} modules={LIBRARY} onPress={open} />
         <Section label="Apps & Add-ons" accent={accent} modules={ADDONS} onPress={open} />
-        <Section label="Settings" accent={accent} modules={SETTINGS} onPress={open} />
+
+        {/* Locked industries — Start Free Trial CTAs that lead to /billing */}
+        {ready && lockedExtras.length > 0 ? (
+          <View style={{ marginTop: 12 }}>
+            <Eyebrow color={COLORS.textMuted}>Try another industry free</Eyebrow>
+            <Text style={styles.lockedHint}>
+              14-day free trial · everything unlocked · no card required.
+            </Text>
+            <View style={styles.grid}>
+              {lockedExtras.map((ind) => {
+                const st = statusFor(ind);
+                const isExpired = st.kind === "expired" || st.kind === "canceling";
+                return (
+                  <LockedTile
+                    key={ind}
+                    testID={`module-locked-${ind}`}
+                    label={INDUSTRY_LABEL[ind]}
+                    sub={`${(INDUSTRY_MODULES[ind] ?? []).length} industry modules`}
+                    icon="lock-closed-outline"
+                    href="/billing"
+                    variant={isExpired ? "upgrade" : "trial"}
+                  />
+                );
+              })}
+            </View>
+          </View>
+        ) : null}
 
         <View style={{ height: 80 }} />
       </ScrollView>
@@ -227,4 +272,5 @@ const styles = StyleSheet.create({
   },
   tileTitle: { color: COLORS.textPrimary, fontSize: 15, fontWeight: "700" },
   tileSub: { color: COLORS.textMuted, fontSize: 12, marginTop: 2 },
+  lockedHint: { color: COLORS.textMuted, fontSize: 12, marginTop: 4, marginBottom: 8 },
 });

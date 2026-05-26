@@ -1,6 +1,9 @@
-// LockedTile — used on Modules / Apps & Add-ons grids for features the user's
-// plan does not include. Mirrors the web "Upgrade to unlock" pattern. Tapping
-// it opens the AddOns marketplace screen instead of the locked target.
+// LockedTile — used on Modules / Apps & Add-ons / Capture grids for features
+// the user's plan does not include. Supports two visual variants:
+//   • "upgrade" (default) — yellow "UPGRADE TO UNLOCK" pill, taps go to /billing.
+//   • "trial" — authority-blue "START FREE TRIAL" pill, taps go to /billing.
+//
+// Mirrors the web "Upgrade to unlock" pattern.
 
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -9,20 +12,25 @@ import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import { COLORS, TOKENS } from "@/src/theme/colors";
 
+export type LockedVariant = "upgrade" | "trial";
+
 export function LockedTile({
   label,
   sub,
   icon = "lock-closed-outline",
   testID,
-  href = "/module/addons",
+  href = "/billing",
+  variant = "upgrade",
 }: {
   label: string;
   sub?: string;
   icon?: keyof typeof Ionicons.glyphMap;
   testID?: string;
   href?: string;
+  variant?: LockedVariant;
 }) {
   const router = useRouter();
+  const isTrial = variant === "trial";
   return (
     <TouchableOpacity
       testID={testID}
@@ -30,14 +38,37 @@ export function LockedTile({
       onPress={() => router.push(href as any)}
       style={styles.tile}
     >
-      <View style={styles.iconBox}>
-        <Ionicons name={icon} size={20} color={COLORS.textMuted} />
+      <View
+        style={[
+          styles.iconBox,
+          isTrial ? { borderColor: TOKENS.authority, backgroundColor: `${TOKENS.authority}10` } : null,
+        ]}
+      >
+        <Ionicons
+          name={isTrial ? "gift-outline" : icon}
+          size={20}
+          color={isTrial ? TOKENS.authority : COLORS.textMuted}
+        />
       </View>
       <Text style={styles.title}>{label}</Text>
       {sub ? <Text style={styles.sub}>{sub}</Text> : null}
-      <View style={styles.pill}>
-        <Ionicons name="sparkles-outline" size={11} color={TOKENS.warnInk} style={{ marginRight: 4 }} />
-        <Text style={styles.pillText}>UPGRADE TO UNLOCK</Text>
+      <View
+        style={[
+          styles.pill,
+          isTrial
+            ? { backgroundColor: `${TOKENS.authority}15`, borderColor: TOKENS.authority }
+            : null,
+        ]}
+      >
+        <Ionicons
+          name={isTrial ? "rocket-outline" : "sparkles-outline"}
+          size={11}
+          color={isTrial ? TOKENS.authority : TOKENS.warnInk}
+          style={{ marginRight: 4 }}
+        />
+        <Text style={[styles.pillText, isTrial ? { color: TOKENS.authority } : null]}>
+          {isTrial ? "START FREE TRIAL" : "UPGRADE TO UNLOCK"}
+        </Text>
       </View>
     </TouchableOpacity>
   );
@@ -48,7 +79,7 @@ const styles = StyleSheet.create({
     width: "50%",
     paddingHorizontal: 6,
     paddingVertical: 10,
-    opacity: 0.85,
+    opacity: 0.95,
   },
   iconBox: {
     width: 38,

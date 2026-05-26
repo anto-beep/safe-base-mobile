@@ -505,9 +505,101 @@ agent_communication:
            settings/business put, settings/notifications put, onboarding
            put, partner branding put).
 
-  - agent: "testing"
+  - agent: "main"
     message: |
-      Iteration 9: ALL 7 FIXES GREEN.
+      Iteration 10 — major feature: per-industry FREE TRIAL gating + Settings
+      as its own tab + Accessibility widget actually applies prefs.
+
+      NEW MODULES:
+        - src/api/billing.ts — typed wrappers for /billing/plans,
+          /billing/my-subscriptions, /billing/start-trial,
+          /billing/checkout-industry, /billing/change, /billing/cancel,
+          /auth/permissions. Confirmed live shapes (see test_result.md).
+        - src/context/BillingContext.tsx — provider fetches subscriptions +
+          permissions after auth. Exposes statusFor(industry),
+          isUnlocked(industry), earliestExpiringTrial, startTrial(),
+          cancel(), change(), refresh().
+        - src/components/TrialBanner.tsx — sticky top bar that shows
+          "N days left in your {industry} trial · Tap to upgrade" when at
+          least one trial is active. Hidden on pre-auth / billing.
+        - app/billing/index.tsx — full billing dashboard listing all 5
+          industries with their per-industry status, start-trial button,
+          plans sheet (monthly/annual toggle), upgrade → Stripe Checkout
+          via expo-web-browser, cancel button.
+
+      MODIFIED:
+        - app/_layout.tsx — wraps app in <BillingProvider/> and mounts
+          <TrialBanner/> globally.
+        - app/(tabs)/_layout.tsx — replaced "Profile" tab with "Settings"
+          tab (per user B2: 4 tabs total). Profile route still mounted
+          (href:null) so deeplinks survive.
+        - app/(tabs)/settings.tsx — NEW: 4th-tab landing with sections
+          (Account: Profile/Business/Team/Onboarding, Plan: Billing/
+          Notifications), plan summary card, sign-out CTA.
+        - app/(tabs)/capture.tsx — uses BillingContext.isUnlocked. Primary
+          industry's tiles always render; unlocked extras (paid or trial)
+          render inline with a TRIAL · ND LEFT pill; locked industries
+          show LockedTile variant="trial" linking to /billing.
+        - app/(tabs)/modules.tsx — same gating. Settings section removed
+          (now its own tab). Unlocked extra industries render their full
+          modules inline.
+        - src/components/LockedTile.tsx — new "trial" variant (authority
+          blue, "START FREE TRIAL" pill) vs "upgrade" (warning yellow).
+          Default href is now /billing instead of /module/addons.
+        - src/context/AccessibilityContext.tsx — now ACTUALLY applies
+          prefs: Text/TextInput defaultProps (fontFamily, scale), and on
+          web injects a global <style> tag for fontScale, highContrast,
+          dyslexiaFont, emphasizeLinks, reduceMotion.
+
+frontend_phase1k_billing_and_a11y:
+  - task: "BillingProvider integration (subscriptions + permissions)"
+    file: "src/context/BillingContext.tsx, src/api/billing.ts"
+    implemented: true
+    working: "NA"
+    priority: "high"
+    needs_retesting: true
+  - task: "TrialBanner sticky countdown across screens"
+    file: "src/components/TrialBanner.tsx, app/_layout.tsx"
+    implemented: true
+    working: "NA"
+    priority: "high"
+    needs_retesting: true
+  - task: "Billing dashboard with start-trial / upgrade / cancel / plans sheet"
+    file: "app/billing/index.tsx"
+    implemented: true
+    working: "NA"
+    priority: "high"
+    needs_retesting: true
+  - task: "Capture tab uses BillingContext (primary always; trials inline; LockedTile trial variant for un-subscribed)"
+    file: "app/(tabs)/capture.tsx"
+    implemented: true
+    working: "NA"
+    priority: "high"
+    needs_retesting: true
+  - task: "Modules tab uses BillingContext; Settings section removed"
+    file: "app/(tabs)/modules.tsx"
+    implemented: true
+    working: "NA"
+    priority: "high"
+    needs_retesting: true
+  - task: "Settings tab replaces Profile tab (4-tab layout)"
+    file: "app/(tabs)/_layout.tsx, app/(tabs)/settings.tsx"
+    implemented: true
+    working: "NA"
+    priority: "high"
+    needs_retesting: true
+  - task: "LockedTile trial variant"
+    file: "src/components/LockedTile.tsx"
+    implemented: true
+    working: "NA"
+    priority: "medium"
+    needs_retesting: true
+  - task: "Accessibility widget actually applies prefs (Text defaults + web CSS)"
+    file: "src/context/AccessibilityContext.tsx"
+    implemented: true
+    working: "NA"
+    priority: "high"
+    needs_retesting: true
         - /addons/api-keys mounts; ChipGroup populated; no crash.
         - /library/documents → "Document library", /library/policies →
           "Policy library", /library/forms → "Form library".

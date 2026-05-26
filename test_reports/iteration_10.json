@@ -1,0 +1,43 @@
+{
+  "summary": "Iteration 10 billing/trial overhaul + accessibility re-wire verified via web preview as trades.demo. 4-tab layout (HOME/MODULES/CAPTURE/SETTINGS, no Profile tab) ships; profile route still reachable from Settings → Profile. Trial banner renders globally (hidden on /login, /billing) — shows '12 days left in your Trades & Construction free trial · Tap to upgrade' and routes to /billing. Settings tab fully populated (identity row, plan-summary card 3/5 unlocked / 3 in trial / 0 paid, account section, plan & notifications section, Talk to support, Sign out). Billing dashboard renders all 5 industry cards with correct status badges (Trades TRIAL 12D, Transport TRIAL 14D, Retail TRIAL 14D, Healthcare NOT SUBSCRIBED, Hospitality EXPIRED). Plans sheet opens and the monthly/annual cycle toggle works. Capture and Modules tabs gate correctly — Transport in-trial section renders inline with '14D LEFT' pill, locked-tile grid surfaces remaining industries. Accessibility widget now actually applies prefs on web — clicking Larger boosts html font-size from 16px → 20.8px and a <style id='safebase-a11y-style'> tag is injected; dyslexia/high-contrast/emphasize-links rules also append to the tag. Two non-blocking findings: backend returns 0 plans for transport (frontend correctly shows 'No plans available'), and the Hospitality card returns EXPIRED rather than the CANCELING state the request expected — for EXPIRED both 'Start free trial' and 'View plans & upgrade' buttons render simultaneously which is mildly confusing.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/billing/plans?industry=transport", "issue": "Returns plans: [] for Transport while every other industry returns 6–8 plans. PlansSheet correctly shows 'No plans available' but transport trial holders cannot upgrade. Backend seed needs transport tiers."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "BillingScreen (Hospitality card)", "issue": "When status.kind === 'expired' the card renders BOTH a 'Start free trial' PrimaryButton AND a 'View plans & upgrade' PrimaryButton. Two equally-weighted primary CTAs are ambiguous — pick one (recommend Upgrade for expired, Start free trial for none).", "testID": "billing-card-hospitality", "priority": "MEDIUM"},
+      {"component": "Tabs.Screen", "issue": "tabBarTestID for HOME/MODULES/CAPTURE/SETTINGS does NOT propagate to the rendered web tab buttons (no [data-testid=\"tab-settings\"] etc. nodes in DOM). Tab labels can still be tapped by text. Consider wrapping each tab with tabBarButton that forwards testID, otherwise automation has to rely on visible text.", "testID": "tab-*", "priority": "LOW"}
+    ],
+    "integration_issues": [
+      {"flow": "Plans sheet → checkout for Transport", "issue": "User on Transport trial taps 'View plans & upgrade' → modal opens → 'No plans available' shown. Cannot exercise POST /billing/checkout-industry for Transport. Other industries have plans listed.", "affected_testIDs": ["plans-sheet", "billing-upgrade-transport"]}
+    ],
+    "design_issues": [
+      {"screen": "/billing", "issues": ["Two primary CTAs stacked for EXPIRED state is visually noisy (Hospitality card)", "StatusBadge for trial uses authority blue same tone as the upgrade button — secondary contrast OK on dark surface."]}
+    ],
+    "react_native_issues": [
+      {"component": "TrialBanner", "issue": "Uses 'pointerEvents: \"box-none\"' inline style with @ts-ignore. Console emits 'props.pointerEvents is deprecated. Use style.pointerEvents' warning (already on style, fine) but this warning is global and originates from a different RNW upstream package — non-blocking. Reference: /app/frontend/src/components/TrialBanner.tsx:63"}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Backend: seed Transport plans (currently 0 → frontend shows 'No plans available'). All other industries are fine.",
+    "Billing card: collapse the two-primary-CTA pattern for EXPIRED state — show 'Start free trial' only when kind === 'none', 'View plans & upgrade' only when kind in (trial, expired, canceling).",
+    "Reconcile expected vs actual statuses for trades.demo: spec said Hospitality=CANCELING + Retail=NOT SUBSCRIBED, backend now returns Hospitality=EXPIRED + Retail=TRIAL. Either re-seed the demo account or update the spec/copy.",
+    "Optional: ensure tab-* testIDs reach the DOM on web (custom tabBarButton). Not blocking but improves automation."
+  ],
+  "critical_code_review_comments": [
+    "BillingScreen actions branching renders Start-Trial AND Upgrade for 'expired' kind concurrently — refactor to a single branch.",
+    "AccessibilityContext.applyToRNDefaults mutates Text/TextInput.defaultProps imperatively — works but the inherited style overrides any per-component undefined family. Safe today; revisit if a screen explicitly needs system font while dyslexia mode is on.",
+    "BillingContext.statusFor never returns kind 'canceling' from a sub whose backend status string is literally 'canceling' unless statusKind handles that — verify the api/billing.ts statusKind mapping covers 'canceling' (UI relies on it for the canceling pill)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "80%", "frontend": "92%"},
+  "seed_data_creation": "None. Used existing trades.demo@safebase.com.au seed.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Login via inputs[0]/inputs[1] + page.get_by_text('SIGN IN').first.click(force=True). Tabs lack data-testid on web — navigate directly via /settings, /capture, /modules, /billing, /profile. trades.demo currently has trades + transport + retail in TRIAL, healthcare NONE, hospitality EXPIRED. Accessibility verification: read getComputedStyle(documentElement).fontSize after toggling a11y-font-1_3 → expect 20.8px; check document.getElementById('safebase-a11y-style').innerHTML for injected rules.",
+  "rca_of_issue": "Two minor UX/data gaps surfaced. (1) Backend /billing/plans?industry=transport returns plans:[] — likely the seed_billing_plans script omitted Transport. Reproduce: curl https://safe-systems.preview.emergentagent.com/api/billing/plans?industry=transport → {plans:[]}. Mitigation: seed transport tiers identically to trades. (2) BillingScreen renders two primary buttons for 'expired' kind because the two conditional blocks (line 161 'none||expired' and line 172 'trial||expired||canceling') both include 'expired'. Mitigation: remove 'expired' from the second branch OR remove from the first."
+}

@@ -15,7 +15,7 @@ const iconRenderer = (name: keyof typeof Ionicons.glyphMap) =>
 const HomeIcon = iconRenderer("grid-outline");
 const ModulesIcon = iconRenderer("apps-outline");
 const CaptureIcon = iconRenderer("add-circle-outline");
-const ProfileIcon = iconRenderer("person-circle-outline");
+const SettingsIcon = iconRenderer("settings-outline");
 
 export default function TabsLayout() {
   const { user, ready } = useAuth();
@@ -65,7 +65,10 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen name="capture" options={{ title: "Capture", tabBarIcon: CaptureIcon, tabBarTestID: "tab-capture" }} />
-      <Tabs.Screen name="profile" options={{ title: "Profile", tabBarIcon: ProfileIcon, tabBarTestID: "tab-profile" }} />
+      <Tabs.Screen name="settings" options={{ title: "Settings", tabBarIcon: SettingsIcon, tabBarTestID: "tab-settings" }} />
+      {/* Profile is now nested under Settings — keep the route addressable from
+          deeplinks/legacy code but hide the tab. */}
+      <Tabs.Screen name="profile" options={{ href: null }} />
     </Tabs>
   );
 }

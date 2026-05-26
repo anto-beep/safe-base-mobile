@@ -1,16 +1,18 @@
-// Industry-specific Capture tab. Each industry sees ONLY its own capture tiles
-// (matches the web app where Capture is gated by the user's industry +
-// feature flags). No cross-industry leakage. Backend enforces with
-// require_feature; client just hides what the user can't see.
+// Capture tab — shows the user's primary-industry quick-capture tiles fully
+// unlocked, plus a clearly-labelled "Other industries" section. Industries the
+// user is currently entitled to (paid OR mid-trial) show their capture tiles
+// inline; un-subscribed industries surface a LockedTile with a "Start Free
+// Trial" CTA pointing at /billing.
 
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { Eyebrow, ScreenHeader } from "@/src/components/ui";
 import { LockedTile } from "@/src/components/LockedTile";
+import { Eyebrow, ScreenHeader } from "@/src/components/ui";
 import { useAuth } from "@/src/context/AuthContext";
+import { ALL_INDUSTRIES, useBilling } from "@/src/context/BillingContext";
 import { accentFor, COLORS, INDUSTRY_LABEL, Industry, TOKENS } from "@/src/theme/colors";
 
 interface CaptureItem {
@@ -21,7 +23,6 @@ interface CaptureItem {
   href: string;
 }
 
-// Per-industry capture tile sets. Mirror of the web app Capture menu.
 const CAPTURES_BY_INDUSTRY: Record<Industry, CaptureItem[]> = {
   trades: [
     { id: "incident", title: "Incident / hazard report", sub: "Injury, near-miss, hazard", icon: "warning-outline", href: "/incident/new" },
@@ -44,7 +45,7 @@ const CAPTURES_BY_INDUSTRY: Record<Industry, CaptureItem[]> = {
     { id: "ffd", title: "Fitness-for-duty", sub: "Pre-shift driver declaration", icon: "fitness-outline", href: "/transport/fitness-for-duty" },
     { id: "fatigue", title: "Fatigue log", sub: "Work / rest hours (HVNL)", icon: "moon-outline", href: "/transport/fatigue" },
     { id: "load", title: "Load restraint check", sub: "LRG 3rd Ed performance standard", icon: "cube-outline", href: "/transport/load-restraint" },
-    { id: "mass", title: "Mass declaration", sub: "GML / CML / HML / PBS", icon: "scale-outline", href: "/transport/mass-declarations" },
+    { id: "mass", title: "Mass declaration", sub: "GML / CML / HML / PBS", icon: "scale-outline", href: "/transport/mass" },
     { id: "nhvr", title: "NHVR occurrence", sub: "s 596A notifiable (24h)", icon: "alert-circle-outline", href: "/transport/nhvr" },
     { id: "incident", title: "Incident report", sub: "Injury, near-miss, hazard", icon: "warning-outline", href: "/incident/new" },
   ],
@@ -67,51 +68,94 @@ const CAPTURES_BY_INDUSTRY: Record<Industry, CaptureItem[]> = {
 export default function Capture() {
   const { user } = useAuth();
   const router = useRouter();
-  const industry = (user?.industry as Industry | undefined) ?? "trades";
-  const accent = accentFor(industry);
-  const tiles = CAPTURES_BY_INDUSTRY[industry] ?? [];
+  const { isUnlocked, statusFor, ready } = useBilling();
+  const primary = (user?.industry as Industry | undefined) ?? "trades";
+  const accent = accentFor(primary);
 
-  // Other industries (parity with Modules sidebar) — surfaced as locked tiles
-  // so the user can clearly see what their plan would unlock by upgrading.
-  const OTHER_INDUSTRIES: Industry[] = (["trades", "hospitality", "transport", "healthcare", "retail"] as Industry[])
-    .filter((k) => k !== industry);
+  // An industry is "available" when it's paid OR in active trial. Primary
+  // industry tiles always render (the user can always see their own).
+  const availableIndustries: Industry[] = ALL_INDUSTRIES.filter(
+    (i) => i === primary || isUnlocked(i),
+  ) as Industry[];
+
+  const lockedIndustries: Industry[] = ALL_INDUSTRIES.filter(
+    (i) => i !== primary && !isUnlocked(i),
+  ) as Industry[];
+
+  const primaryTiles = CAPTURES_BY_INDUSTRY[primary] ?? [];
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScrollView contentContainerStyle={styles.content}>
         <ScreenHeader
-          eyebrow={INDUSTRY_LABEL[industry]}
+          eyebrow={INDUSTRY_LABEL[primary]}
           title="Capture"
-          subtitle={`Daily logs, declarations and reports for ${INDUSTRY_LABEL[industry]}. Every entry is regulator-ready.`}
+          subtitle={`Daily logs, declarations and reports. Every entry is regulator-ready.`}
           accent={accent}
         />
 
+        {/* Primary industry — always shown */}
         <Eyebrow color={accent}>For your role</Eyebrow>
-        {tiles.length === 0 ? (
-          <View style={styles.emptyBox}>
-            <Text style={styles.emptyText}>No capture entries configured for your industry yet.</Text>
-          </View>
-        ) : tiles.map((c) => (
-          <CaptureRow key={c.id} item={c} accent={accent} onPress={() => router.push(c.href as any)} />
+        {primaryTiles.map((c) => (
+          <CaptureRow key={`${primary}-${c.id}`} item={c} accent={accent} onPress={() => router.push(c.href as any)} />
         ))}
 
-        <View style={{ height: 18 }} />
-        <Eyebrow color={COLORS.textMuted}>Other industries</Eyebrow>
-        <Text style={styles.lockedHint}>Capture flows for the other SafeBase industries you can add to your plan.</Text>
-        <View style={styles.lockedGrid}>
-          {OTHER_INDUSTRIES.map((ind) => (
-            <LockedTile
-              key={ind}
-              testID={`capture-locked-${ind}`}
-              label={INDUSTRY_LABEL[ind]}
-              sub={`${(CAPTURES_BY_INDUSTRY[ind] ?? []).length} capture flows`}
-              icon="lock-closed-outline"
-              href="/module/addons"
-            />
-          ))}
-        </View>
+        {/* Additional industries the user is paid-into OR mid-trial */}
+        {availableIndustries
+          .filter((i) => i !== primary)
+          .map((ind) => {
+            const tiles = CAPTURES_BY_INDUSTRY[ind] ?? [];
+            const st = statusFor(ind);
+            return (
+              <View key={ind} style={{ marginTop: 18 }}>
+                <View style={styles.sectionHeaderRow}>
+                  <Eyebrow color={COLORS.textSecondary}>{INDUSTRY_LABEL[ind]}</Eyebrow>
+                  {st.kind === "trial" ? (
+                    <View style={styles.trialPill}>
+                      <Ionicons name="gift-outline" size={11} color={TOKENS.authority} />
+                      <Text style={styles.trialPillText}>{st.daysLeft ?? 0}D LEFT</Text>
+                    </View>
+                  ) : null}
+                </View>
+                {tiles.map((c) => (
+                  <CaptureRow
+                    key={`${ind}-${c.id}`}
+                    item={c}
+                    accent={accent}
+                    onPress={() => router.push(c.href as any)}
+                  />
+                ))}
+              </View>
+            );
+          })}
 
-        <View style={{ height: 60 }} />
+        {/* Locked industries — Start Free Trial CTAs */}
+        {lockedIndustries.length > 0 && ready ? (
+          <>
+            <View style={{ height: 18 }} />
+            <Eyebrow color={COLORS.textMuted}>Other industries</Eyebrow>
+            <Text style={styles.lockedHint}>Try every SafeBase industry free for 14 days. Everything unlocked, no card required.</Text>
+            <View style={styles.lockedGrid}>
+              {lockedIndustries.map((ind) => {
+                const st = statusFor(ind);
+                const isExpired = st.kind === "expired" || st.kind === "canceling";
+                return (
+                  <LockedTile
+                    key={ind}
+                    testID={`capture-locked-${ind}`}
+                    label={INDUSTRY_LABEL[ind]}
+                    sub={`${(CAPTURES_BY_INDUSTRY[ind] ?? []).length} capture flows`}
+                    icon="lock-closed-outline"
+                    href="/billing"
+                    variant={isExpired ? "upgrade" : "trial"}
+                  />
+                );
+              })}
+            </View>
+          </>
+        ) : null}
+
+        <View style={{ height: 80 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -166,8 +210,17 @@ const styles = StyleSheet.create({
   },
   rowTitle: { color: COLORS.textPrimary, fontSize: 16, fontWeight: "700" },
   rowSub: { color: COLORS.textMuted, fontSize: 12, marginTop: 2 },
-  emptyBox: { padding: 18, borderWidth: 1, borderColor: TOKENS.border, marginTop: 8 },
-  emptyText: { color: COLORS.textMuted, fontSize: 13 },
+  sectionHeaderRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  trialPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    backgroundColor: `${TOKENS.authority}15`,
+    borderWidth: 1,
+    borderColor: TOKENS.authority,
+  },
+  trialPillText: { fontSize: 10, fontWeight: "800", letterSpacing: 1, color: TOKENS.authority, marginLeft: 4 },
   lockedHint: { color: COLORS.textMuted, fontSize: 12, marginTop: 4, marginBottom: 8 },
   lockedGrid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -6 },
 });
