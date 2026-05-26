@@ -1,0 +1,73 @@
+{
+  "summary": "First E2E pass against the live (now-awake) external SafeBase backend via Expo web preview at http://localhost:3000 (mobile viewport 390x844). Core auth + colour-system flows are working: pre-login authority blue (rgb(0,47,167) on Sign in button) confirmed; customer trades login lands on Home (/(tabs)) with tabs HOME/MODULES/CAPTURE/PROFILE + concierge & a11y FABs visible; hospitality login also succeeds; admin login (admin@safebase.internal/AdminDemo@1234) routes into the (admin) stack with warning yellow accent (rgb(255,204,0) on Sign in button) and KPI/ACCOUNTS/SUBS/FLAGS/AUDIT tabs render with seeded numbers. Forgot password (empty validation + generic success), register (all fields + empty validation), and concierge chat overlay (FAB tap → /chat with input field + greeter copy) all behave. No /api/* 4xx/5xx responses captured during the run. Two visual / config issues: (1) trades INDUSTRY_ACCENT is #FFCC00 in src/theme/colors.ts — identical to TOKENS.warning (the admin yellow), so the trades industry accent is visually indistinguishable from the internal-admin accent, and it does NOT match the #FFA630 orange the PRD/handoff describes. (2) RN-web console error 'Unexpected text node: . A text node cannot be a child of a <View>' on register.tsx (stray whitespace between </TouchableOpacity> and </ScrollView> at L168). Minor RN-web deprecation: 'props.pointerEvents is deprecated. Use style.pointerEvents'. Industry switcher block on Profile is intentionally hidden (canSwitch=false) because the trades demo user only has one industry — could not verify the multi-industry switch path with the seeded accounts; recommend a seeded multi-industry user. Native-only flows (biometric unlock, push delivery, native SQLite path, Google OAuth via expo-auth-session) are NA on web preview as agreed.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Profile screen — IndustrySwitcher",
+        "issue": "Industry switcher is conditionally rendered only when user.industries.length > 1. trades.demo/hospitality.demo seeded accounts return a single-industry user, so the switcher never renders and the multi-industry switch flow cannot be exercised on web. Either expand the demo user payload to include multiple industries or always render the switcher in read-only mode for single-industry users.",
+        "testID": "(none — no industry-switcher testID present on profile)",
+        "priority": "MEDIUM"
+      },
+      {
+        "component": "Trades industry accent (src/theme/colors.ts)",
+        "issue": "INDUSTRY_ACCENT.trades = '#FFCC00' is IDENTICAL to TOKENS.warning ('#FFCC00') used for the internal-admin accent. Result: the trades customer Home and the internal-admin dashboard wear the same yellow accent, defeating the 'admin yellow vs industry colour' visual contract. Also the PRD/handoff specified trades orange #FFA630, but the implemented value is yellow #FFCC00. Pick one source of truth — either change trades to #FFA630 (orange) as per PRD, or change admin/warning to a non-conflicting hue.",
+        "testID": "(theme token)",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Register screen (app/register.tsx)",
+        "issues": [
+          "Console error: 'Unexpected text node:         . A text node cannot be a child of a <View>.' Likely caused by stray whitespace between </TouchableOpacity> and </ScrollView> around line 168 (`</TouchableOpacity>        </ScrollView>`). Strip the whitespace or move </ScrollView> onto its own line."
+        ]
+      },
+      {
+        "screen": "Global (multiple screens)",
+        "issues": [
+          "Console warning: 'props.pointerEvents is deprecated. Use style.pointerEvents'. Sourced from a child component (likely one of the ui primitives or the SafeAreaView/Modal stack). Migrate any pointerEvents prop to style={{ pointerEvents: ... }} for SDK 54 alignment."
+        ]
+      }
+    ],
+    "react_native_issues": [
+      {
+        "component": "register.tsx",
+        "issue": "Stray whitespace text node inside a <View>/<ScrollView> ancestor causing RN-web error 'Unexpected text node: . A text node cannot be a child of a <View>.'. Reference: /app/frontend/app/register.tsx:168"
+      },
+      {
+        "component": "pointerEvents prop usage",
+        "issue": "RN-web deprecation: 'props.pointerEvents is deprecated. Use style.pointerEvents'. Triggered on login + register + profile screens — likely from a shared ui primitive (Input/PrimaryButton) or SafeAreaView ancestor. Reference: emitted from react-native-web; grep `pointerEvents=` under /app/frontend/src/components/."
+      }
+    ]
+  },
+  "test_report_links": ["/app/test_reports/iteration_1.json"],
+  "action_items": [
+    "Resolve trades accent collision: change INDUSTRY_ACCENT.trades from #FFCC00 to #FFA630 (PRD value) so trades is visually distinct from the admin/warning yellow. /app/frontend/src/theme/colors.ts:35",
+    "Fix RN-web 'Unexpected text node' in /app/frontend/app/register.tsx — remove the whitespace between </TouchableOpacity> and </ScrollView> near line 168.",
+    "Migrate any pointerEvents prop usage to style.pointerEvents to clear the SDK 54 deprecation warning.",
+    "Expose the IndustrySwitcher (or a read-only industry chip) on Profile even when user.industries.length <= 1 so the flow is testable, OR seed a multi-industry demo user (e.g. owner@safetradie.demo) with industries: ['trades','hospitality'] so the multi-industry path can be exercised on web.",
+    "Add a testID='industry-switcher' wrapper to the switcher block in /app/frontend/src/components/IndustrySwitcher.tsx for automated coverage.",
+    "Capture form (/capture/lone-worker-checkin) was NOT exercised end-to-end this pass due to scope/time — recommend re-test in next iteration to confirm web offline-queue fallback (offline-queue.web.ts) enqueues + flushes."
+  ],
+  "critical_code_review_comments": [
+    "src/theme/colors.ts: TOKENS.warning ('#FFCC00') === INDUSTRY_ACCENT.trades ('#FFCC00'). Per the colour contract (admin = warning yellow, customer = industry accent), these MUST differ; otherwise the visual signal that distinguishes 'I am inside the internal-admin stack' from 'I am a trades customer' is lost.",
+    "app/register.tsx:168 — `</TouchableOpacity>        </ScrollView>` produces a literal whitespace text node under a non-Text RN parent. RN-web warns; native RN would also flag this in strict mode.",
+    "app/(tabs)/profile.tsx:30 — `canSwitch = availableIndustries.length > 1` silently hides the switcher when the user only has one industry. Good defensive default but means the feature is invisible (and untestable) for all single-industry demo accounts.",
+    "app/forgot-password.tsx — Backend error is swallowed and always shown as a generic success (good for email-enumeration hardening), but there is no client-side log of the actual reason. Consider a console.warn behind __DEV__ so QA can spot real failures."
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "NA (external backend out of scope; observed 0 /api/* failures during E2E)",
+    "frontend": "9/11 PRD scenarios PASS, 1 NA (industry switcher — feature hidden by data shape), 1 deferred (capture form offline-queue)"
+  },
+  "seed_data_creation": "None created. Used the externally-seeded accounts from /app/memory/test_credentials.md (trades.demo, hospitality.demo, admin@safebase.internal).",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend at https://safe-systems.preview.emergentagent.com/api/* is awake and responsive. Login/admin-login/forgot/register/concierge-chat/admin-dashboard all render correctly on web preview at http://localhost:3000 with mobile viewport 390x844. Pre-login accent confirmed #002FA7 (authority blue); admin accent confirmed #FFCC00 (warning yellow). Logout testID is `profile-logout-button` and lives on the Profile tab — note it triggers an Alert.alert confirmation that on web becomes a window.confirm; click 'OK' in the confirm to actually log out. Trades industry accent (#FFCC00 in code) collides with admin yellow and disagrees with the PRD value #FFA630 — flagged for main agent. Capture form (/capture/lone-worker-checkin) was not exercised end-to-end and should be the priority for iteration_2. Native flows (biometric, push delivery, native SQLite, Google OAuth) remain NA on web.",
+  "rca_of_issue": "Trades-yellow collision RCA: src/theme/colors.ts defines both TOKENS.warning and INDUSTRY_ACCENT.trades as '#FFCC00'. The activeAccent() resolver correctly returns the industry accent for an authenticated customer, but because that value equals the admin warning hue, customers in the trades vertical see the same yellow that the internal-admin stack uses. Reproduction: log in as trades.demo@safebase.com.au → observe Home compliance score / live chip / Quick Capture icons rendered in rgb(255,204,0); then sign out and log in via /admin-login → observe identical hue on the admin Sign-in button and tab indicators. Mitigation: change INDUSTRY_ACCENT.trades to '#FFA630' (per PRD) — one-line change at /app/frontend/src/theme/colors.ts:35."
+}

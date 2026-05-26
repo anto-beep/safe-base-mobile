@@ -101,3 +101,157 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+
+user_problem_statement: |
+  SafeBase Mobile App — Expo React Native (SDK 54) companion app to the external
+  SafeBase FastAPI backend at https://safe-systems.preview.emergentagent.com/api/*.
+  v1 MVP features already scaffolded: email/password + Google + biometric auth,
+  role/industry routing (Owner vs Worker), Internal Admin stack, multi-industry
+  switcher, offline-first SQLite capture queue, Concierge AI chat, push token
+  registration, dynamic colour system. This testing pass is the first E2E run
+  against the live (now-awake) backend.
+
+backend:
+  - task: "External SafeBase backend connectivity"
+    implemented: true
+    working: true
+    file: "src/api/client.ts"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Confirmed POST /api/auth/login returns 200 + JWT for trades.demo@safebase.com.au. Backend pod is now awake."
+
+frontend:
+  - task: "Email/password login flow (customer)"
+    implemented: true
+    working: "NA"
+    file: "app/login.tsx, src/context/AuthContext.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Needs live E2E validation. Demo creds in test_credentials.md."
+
+  - task: "Admin login flow"
+    implemented: true
+    working: "NA"
+    file: "app/admin-login.tsx, src/context/AdminAuthContext.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Should hit /api/internal-admin/login and route to (admin) stack."
+
+  - task: "Dynamic colour system (authority blue / admin yellow / industry accent)"
+    implemented: true
+    working: "NA"
+    file: "src/theme/colors.ts"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Verify accent changes after login: trades=#FFA630, hospitality=red, etc. Admin should be yellow/ink."
+
+  - task: "Owner vs Worker dashboard routing"
+    implemented: true
+    working: "NA"
+    file: "app/(tabs)/index.tsx, app/(tabs)/_layout.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+
+  - task: "Industry switcher + module navigation"
+    implemented: true
+    working: "NA"
+    file: "src/components/IndustrySwitcher.tsx, app/module/[slug].tsx"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+
+  - task: "Offline-first capture queue (SQLite)"
+    implemented: true
+    working: "NA"
+    file: "src/lib/offline-queue.ts, app/capture/*.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "main"
+        comment: "Test on web fallback (offline-queue.web.ts). Native SQLite path can only be validated via dev build."
+
+  - task: "Concierge AI chat overlay"
+    implemented: true
+    working: "NA"
+    file: "app/chat.tsx, src/components/FloatingOverlays.tsx"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+
+  - task: "Forgot password flow"
+    implemented: true
+    working: "NA"
+    file: "app/forgot-password.tsx"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+
+  - task: "Industry alert tiles / widget fetching"
+    implemented: true
+    working: "NA"
+    file: "src/components/IndustryAlertTile.tsx"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+
+metadata:
+  created_by: "main_agent"
+  version: "1.0"
+  test_sequence: 1
+  run_ui: true
+
+test_plan:
+  current_focus:
+    - "Email/password login flow (customer)"
+    - "Admin login flow"
+    - "Dynamic colour system (authority blue / admin yellow / industry accent)"
+    - "Owner vs Worker dashboard routing"
+    - "Industry alert tiles / widget fetching"
+    - "Concierge AI chat overlay"
+    - "Offline-first capture queue (SQLite)"
+    - "Industry switcher + module navigation"
+    - "Forgot password flow"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+  - agent: "main"
+    message: |
+      First E2E run against live SafeBase backend. Backend is verified awake
+      (POST /api/auth/login → 200). Please run frontend testing via the web
+      preview at http://localhost:3000 (Expo web build of the same Expo Router
+      app). Use the demo credentials from /app/memory/test_credentials.md.
+
+      Key flows to validate:
+        1. Customer login (trades.demo@safebase.com.au / Demo@1234) → tabs land
+           on Home with industry accent (#FFA630 for trades).
+        2. Admin login (admin@safebase.internal / AdminDemo@1234) → (admin) stack.
+        3. Pre-login screens use authority blue accent (#003DA5-ish); after login
+           the accent swaps to the industry colour (or admin yellow).
+        4. Capture forms enqueue offline when network fails and flush on retry.
+        5. Concierge chat overlay opens from FloatingOverlays trigger.
+        6. Forgot password sends correctly.
+
+      Native-only flows (biometric unlock, push notifications, native SQLite,
+      Google OAuth via expo-auth-session) cannot be tested in the web preview —
+      mark them NA / requires-native-build in your report rather than failing.
