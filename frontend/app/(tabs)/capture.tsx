@@ -68,19 +68,25 @@ const CAPTURES_BY_INDUSTRY: Record<Industry, CaptureItem[]> = {
 export default function Capture() {
   const { user } = useAuth();
   const router = useRouter();
-  const { isUnlocked, statusFor, ready } = useBilling();
+  const { isUnlocked, statusFor, anyTrialActive, ready } = useBilling();
   const primary = (user?.industry as Industry | undefined) ?? "trades";
   const accent = accentFor(primary);
+
+  // While subscriptions are still loading we conservatively treat every
+  // industry as unlocked so the user never sees a flash of "Upgrade to
+  // unlock" tiles. Once `ready` flips to true, real per-industry gating
+  // kicks in — but only if no trial is active anywhere on the account.
+  const unlockAll = anyTrialActive || !ready;
 
   // An industry is "available" when it's paid OR in active trial. Primary
   // industry tiles always render (the user can always see their own).
   const availableIndustries: Industry[] = ALL_INDUSTRIES.filter(
-    (i) => i === primary || isUnlocked(i),
+    (i) => i === primary || unlockAll || isUnlocked(i),
   ) as Industry[];
 
-  const lockedIndustries: Industry[] = ALL_INDUSTRIES.filter(
-    (i) => i !== primary && !isUnlocked(i),
-  ) as Industry[];
+  const lockedIndustries: Industry[] = unlockAll
+    ? []
+    : (ALL_INDUSTRIES.filter((i) => i !== primary && !isUnlocked(i)) as Industry[]);
 
   const primaryTiles = CAPTURES_BY_INDUSTRY[primary] ?? [];
 

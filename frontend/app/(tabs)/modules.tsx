@@ -130,9 +130,16 @@ const ADDONS: ModuleDef[] = [
 export default function ModulesScreen() {
   const { user } = useAuth();
   const router = useRouter();
-  const { isUnlocked, statusFor, ready } = useBilling();
+  const { isUnlocked, statusFor, anyTrialActive, ready } = useBilling();
   const primary = (user?.industry as Industry | undefined) ?? "trades";
   const accent = accentFor(primary);
+
+  // "Unlock everything" override: any active trial OR while subscriptions are
+  // still loading. The loading window prevents a brief flash of LockedTile
+  // pills between the first paint and the moment /billing/my-subscriptions
+  // returns. We resolve to ready+!trial before we ever surface "Upgrade to
+  // unlock" anywhere on the screen.
+  const unlockAll = anyTrialActive || !ready;
 
   const open = (m: ModuleDef) => {
     if (m.locked || !m.href) {
@@ -163,7 +170,7 @@ export default function ModulesScreen() {
           accent={accent}
         />
 
-        <Section label={INDUSTRY_LABEL[primary]} accent={accent} modules={INDUSTRY_MODULES[primary] ?? []} onPress={open} />
+        <Section label={INDUSTRY_LABEL[primary]} accent={accent} modules={INDUSTRY_MODULES[primary] ?? []} onPress={open} trial={unlockAll} />
 
         {/* Unlocked extra industries (paid OR trial) — show their modules inline */}
         {unlockedExtras.map((ind) => {
@@ -176,18 +183,21 @@ export default function ModulesScreen() {
               accent={accent}
               modules={INDUSTRY_MODULES[ind] ?? []}
               onPress={open}
+              trial={unlockAll}
             />
           );
         })}
 
-        <Section label="Core" accent={accent} modules={CORE} onPress={open} />
-        <Section label="Safety" accent={accent} modules={SAFETY} onPress={open} />
-        <Section label="Workflows" accent={accent} modules={WORKFLOWS} onPress={open} />
-        <Section label="Library" accent={accent} modules={LIBRARY} onPress={open} />
-        <Section label="Apps & Add-ons" accent={accent} modules={ADDONS} onPress={open} />
+        <Section label="Core" accent={accent} modules={CORE} onPress={open} trial={unlockAll} />
+        <Section label="Safety" accent={accent} modules={SAFETY} onPress={open} trial={unlockAll} />
+        <Section label="Workflows" accent={accent} modules={WORKFLOWS} onPress={open} trial={unlockAll} />
+        <Section label="Library" accent={accent} modules={LIBRARY} onPress={open} trial={unlockAll} />
+        <Section label="Apps & Add-ons" accent={accent} modules={ADDONS} onPress={open} trial={unlockAll} />
 
-        {/* Locked industries — Start Free Trial CTAs that lead to /billing */}
-        {ready && lockedExtras.length > 0 ? (
+        {/* Locked industries — Start Free Trial CTAs that lead to /billing.
+            Only ever shown once subscriptions have loaded AND no trial is
+            active (the global trial-unlock rule). */}
+        {ready && !anyTrialActive && lockedExtras.length > 0 ? (
           <View style={{ marginTop: 12 }}>
             <Eyebrow color={COLORS.textMuted}>Try another industry free</Eyebrow>
             <Text style={styles.lockedHint}>
@@ -219,13 +229,25 @@ export default function ModulesScreen() {
   );
 }
 
-function Section({ label, accent, modules, onPress }: { label: string; accent: string; modules: ModuleDef[]; onPress: (m: ModuleDef) => void }) {
+function Section({
+  label,
+  accent,
+  modules,
+  onPress,
+  trial,
+}: {
+  label: string;
+  accent: string;
+  modules: ModuleDef[];
+  onPress: (m: ModuleDef) => void;
+  trial?: boolean;
+}) {
   if (modules.length === 0) return null;
   return (
     <View style={{ marginTop: 8 }}>
       <Eyebrow color={accent}>{label}</Eyebrow>
       <View style={styles.grid}>
-        {modules.map((m) => m.locked ? (
+        {modules.map((m) => (m.locked && !trial) ? (
           <LockedTile
             key={m.slug}
             testID={`module-${m.slug.replace(/\//g, "-")}-locked`}

@@ -65,6 +65,14 @@ export class Storage extends StorageBase {
     value: Value,
   ): Promise<boolean> {
     try {
+      // SecureStore.setItemAsync requires a string. JSON.stringify(undefined)
+      // returns the literal undefined (not a string), which surfaces as a
+      // confusing "Values must be strings" warning during transient logouts
+      // and biometric refresh flows. Guard explicitly.
+      if (value === undefined) {
+        this.warn("secureSet", key, "value is undefined; refusing to write");
+        return false;
+      }
       await SecureStore.setItemAsync(key, JSON.stringify(value));
       return true;
     } catch (e) {

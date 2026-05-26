@@ -119,11 +119,13 @@ export function BillingProvider({ children }: { children: React.ReactNode }) {
     (industry: IndustrySlug): IndustryStatus => {
       const sub = subscriptions.find((s) => s.industry === industry);
       const kind = statusKind(sub) as IndustryStatusKind;
-      const unlocked = isUnlockedStatus(sub);
+      const unlockedOwn = isUnlockedStatus(sub);
       return {
         industry,
         kind,
-        unlocked,
+        // Status reflects this industry's own sub state. The `unlocked`
+        // flag is updated below with the global-trial override.
+        unlocked: unlockedOwn,
         daysLeft: typeof sub?.trial_days_left === "number" ? sub.trial_days_left : undefined,
         endsAt: sub?.ends_at ?? sub?.trial_ends_at ?? sub?.current_period_end ?? undefined,
         tier: sub?.tier ?? null,
@@ -132,11 +134,6 @@ export function BillingProvider({ children }: { children: React.ReactNode }) {
       };
     },
     [subscriptions],
-  );
-
-  const isUnlocked = useCallback(
-    (industry: IndustrySlug) => statusFor(industry).unlocked,
-    [statusFor],
   );
 
   // Banner picks the soonest-expiring active trial.
@@ -157,6 +154,19 @@ export function BillingProvider({ children }: { children: React.ReactNode }) {
   }, [subscriptions]);
 
   const anyTrialActive = !!earliestExpiringTrial;
+
+  // GLOBAL UNLOCK RULE (per product spec): while ANY 14-day free trial is
+  // active anywhere on the account, EVERY module on EVERY industry is
+  // unlocked. Once all trials expire (and the user isn't on a paid plan for
+  // that industry), per-industry gating kicks back in and unsubscribed
+  // industries surface the "Upgrade to unlock" tile again.
+  const isUnlocked = useCallback(
+    (industry: IndustrySlug) => {
+      if (anyTrialActive) return true;
+      return statusFor(industry).unlocked;
+    },
+    [statusFor, anyTrialActive],
+  );
 
   const upsertSub = useCallback((sub: Subscription) => {
     setSubscriptions((prev) => {

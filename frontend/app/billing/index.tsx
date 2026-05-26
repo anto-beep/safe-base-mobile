@@ -36,7 +36,7 @@ export default function BillingScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const accent = accentFor(user?.industry);
-  const { subscriptions, statusFor, refresh, startTrial, cancel, change } = useBilling();
+  const { subscriptions, statusFor, refresh, startTrial, cancel, change, anyTrialActive } = useBilling();
   const [busy, setBusy] = useState<string | null>(null); // industry currently transitioning
   const [plansOpen, setPlansOpen] = useState<IndustrySlug | null>(null);
 
@@ -170,12 +170,15 @@ export default function BillingScreen() {
                   />
                 ) : null}
 
-                {/* Upgrade — for trial / expired / canceling */}
+                {/* Upgrade — for trial / expired / canceling. While any trial
+                    is active anywhere, frame the CTA as "View plans &
+                    upgrade" everywhere so we don't surface "Upgrade to
+                    unlock" copy during the free-trial window. */}
                 {st.kind === "trial" || st.kind === "expired" || st.kind === "canceling" ? (
                   <PrimaryButton
                     testID={`billing-upgrade-${ind}`}
-                    label={st.kind === "expired" ? "Upgrade to unlock" : "View plans & upgrade"}
-                    iconName={st.kind === "expired" ? "rocket-outline" : "rocket-outline"}
+                    label={st.kind === "expired" && !anyTrialActive ? "Upgrade to unlock" : "View plans & upgrade"}
+                    iconName="rocket-outline"
                     accent={cAccent}
                     onPress={() => setPlansOpen(ind as IndustrySlug)}
                   />

@@ -535,16 +535,75 @@ agent_communication:
 
   - agent: "main"
     message: |
-      Iteration 10 fix applied:
-        - app/billing/index.tsx: split the dual-CTA. "Start free trial"
-          now ONLY renders for kind === "none" (never-tried industries).
-          "View plans & upgrade" / "Upgrade to unlock" renders for trial /
-          expired / canceling. Active gets Change-plan + Cancel.
-      Outstanding (NOT mobile fixable):
-        - Transport plans empty in backend response (seed gap on SafeBase
-          backend).
-        - testID prop forwarding through Expo Router tab buttons on web
-          (cosmetic for automation harnesses).
+      Iteration 12 — follow-up fix. User: "upgrade to unlock is still
+      appearing. remove it for all free trials."
+
+      Root cause was twofold:
+        1. Race condition — during the brief window between auth-success
+           and the first /billing/my-subscriptions response, useBilling()
+           returns ready=false and anyTrialActive=false. The Modules /
+           Capture tabs interpreted that as "no trial" and rendered
+           LockedTile pills with "UPGRADE TO UNLOCK". The pills then
+           disappeared once subs loaded, but the flash was visible.
+        2. Billing dashboard EXPIRED cards always rendered "Upgrade to
+           unlock" CTA, even when other industries were mid-trial. For
+           trades.demo this fired on the Hospitality card (status:
+           "canceling" with ends_at in the past → kind="expired").
+
+      Fix:
+        - app/(tabs)/modules.tsx — new local `unlockAll = anyTrialActive
+          || !ready`. Pass to every Section as `trial`. Bottom locked-
+          extras section now gated on `ready && !anyTrialActive`.
+        - app/(tabs)/capture.tsx — same `unlockAll` derived flag.
+          availableIndustries / lockedIndustries pivot on it.
+        - app/billing/index.tsx — added `anyTrialActive` from useBilling.
+          CTA label now: `st.kind === "expired" && !anyTrialActive
+          ? "Upgrade to unlock" : "View plans & upgrade"`. While ANY trial
+          is active anywhere, EVERY billing card uses "View plans &
+          upgrade" copy.
+        - src/utils/storage/index.ts (native) — secureSet now guards
+          undefined values to silence the iOS "Values must be strings"
+          SecureStore warning that fired during transient logout flows.
+
+      Audit results post-fix on http://localhost:3000 as trades.demo
+      (trades 12d trial, transport 14d trial, retail 14d trial,
+      hospitality expired/canceling, healthcare none):
+        - Home tab: 0 "UPGRADE TO UNLOCK" / 0 "Upgrade to unlock"
+        - Modules tab: 0 / 0
+        - Capture tab: 0 / 0
+        - Settings tab: 0 / 0
+        - /billing: 0 / 0 (4 "View plans & upgrade", 1 "Start free trial"
+          for Healthcare — the legit never-tried opt-in CTA).
+      Result: the upgrade-locking framing is invisible anywhere while a
+      free trial is active, as the spec demands.
+
+      Fix applied (3-layer):
+        1. src/context/BillingContext.tsx — isUnlocked(industry) now
+           returns true for ALL industries when anyTrialActive is true
+           (was per-industry only). statusFor() preserved.
+        2. app/(tabs)/modules.tsx — passes trial={anyTrialActive} into
+           every Section. Section component renders locked:true tiles as
+           regular TouchableOpacity (no LockedTile) when trial===true.
+        3. app/(tabs)/capture.tsx — needs no code change; lockedIndustries
+           filter naturally yields [] when isUnlocked returns true for all.
+
+      Verified post-fix on http://localhost:3000 as trades.demo (has 3
+      active trials: trades 12d, transport 14d, retail 14d):
+        - Modules tab UPGRADE TO UNLOCK pill count: 0 (was 34)
+        - Modules tab START FREE TRIAL pill count: 0 (was 1)
+        - Capture tab UPGRADE TO UNLOCK pill count: 0 (was 35)
+        - Capture tab START FREE TRIAL pill count: 0 (was 2)
+        - Trial banner still renders: "12 days left in your Trades &
+          Construction free trial · Tap to upgrade"
+        - All 5 industry sections render with fully tappable tiles
+        - Settings plan summary: 3/5 Unlocked / 3 In trial / 0 Paid
+
+      Note: A previous testing_agent (iter 11 first pass) misdiagnosed an
+      "auth token not propagating" bug. Verified manually that auth IS
+      working — localStorage has safebase.jwt + safebase.user, billing API
+      call captured Authorization: Bearer header, Settings tab correctly
+      shows 3 in-trial industries. The earlier confusion was a stale Metro
+      bundle (CI mode disables auto-reload) — fixed by a full expo restart.
 
       NEW MODULES:
         - src/api/billing.ts — typed wrappers for /billing/plans,
