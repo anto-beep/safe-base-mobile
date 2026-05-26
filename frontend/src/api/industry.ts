@@ -7,8 +7,11 @@
 
 import { api } from "@/src/api/client";
 
-// ---------- HOSPITALITY ----------
-export type EquipmentType = "fridge" | "coolroom" | "cold_display" | "freezer" | "bain_marie" | "hot_display" | "hot_holding" | "dishwasher";
+// =================== HOSPITALITY ===================
+export type EquipmentType =
+  | "fridge" | "coolroom" | "cold_display" | "freezer"
+  | "bain_marie" | "hot_display" | "hot_holding" | "dishwasher";
+
 export interface TemperatureLog {
   log_id: string;
   equipment: string;
@@ -28,14 +31,147 @@ export interface TempStats {
   by_equipment: Record<string, { total: number; breaches: number }>;
   recent_breaches: TemperatureLog[];
 }
+
+export interface FssRecord {
+  fss_id: string;
+  worker_name: string;
+  worker_id?: string;
+  certificate_number: string;
+  issuing_rto: string;
+  issued_at?: string;
+  expires_at?: string;
+  jurisdiction?: string;
+  is_primary_fss?: boolean;
+  notes?: string;
+  _days_to_expiry?: number;
+  _expiring_soon?: boolean;
+  _expired?: boolean;
+}
+
+export interface HaccpEntry {
+  ccp_id: string;
+  hazard?: string;          // biological / chemical / physical
+  ccp_step: string;
+  critical_limit?: string;
+  measured_value: number | string;
+  within_limit: boolean;
+  corrective_action?: string;
+  verified_by?: string;
+  recorded_at: string;
+}
+
+export interface Allergen {
+  item_id: string;
+  menu_item: string;
+  contains: string[];
+  may_contain: string[];
+  notes?: string;
+  updated_at?: string;
+}
+
+export interface CleaningTask {
+  task_id: string;
+  area: string;
+  frequency: string;         // daily/weekly/monthly
+  method?: string;
+  chemical?: string;
+  responsible?: string;
+  last_completed_at?: string | null;
+  last_completed_by?: string | null;
+  status: "open" | "completed";
+}
+
+export interface Supplier {
+  supplier_id: string;
+  name: string;
+  category?: string;
+  abn?: string;
+  contact_email?: string;
+  contact_phone?: string;
+  approval_certificates?: string[];
+  last_audit_at?: string;
+  notes?: string;
+}
+
+export interface LiquorCert {
+  cert_id: string;
+  worker_name: string;
+  worker_id?: string;
+  certificate_type: string;   // RSA / RSG / Approved Manager
+  certificate_number?: string;
+  jurisdiction?: string;
+  issued_at?: string;
+  expires_at?: string;
+  _days_to_expiry?: number;
+  _expired?: boolean;
+}
+
+export interface InspectionPack {
+  pack_id: string;
+  generated_at: string;
+  covers_period_days: number;
+  manifest: Record<string, number>;
+}
+
 export const HospitalityApi = {
+  // Temperature
   listTemps: () => api.get<{ rows: TemperatureLog[]; total: number }>("/hospitality/temperature-logs"),
   tempStats: () => api.get<TempStats>("/hospitality/temperature-logs/stats"),
   createTemp: (b: { equipment: string; equipment_type: EquipmentType; temp_c: number; taken_at?: string; taken_by?: string; corrective_action?: string }) =>
     api.post<TemperatureLog>("/hospitality/temperature-logs", b),
+
+  // FSS register
+  listFss: () => api.get<{ rows: FssRecord[]; total: number }>("/hospitality/fss-register"),
+  createFss: (b: { worker_name: string; certificate_number: string; issuing_rto: string; worker_id?: string; issued_at?: string; expires_at?: string; jurisdiction?: string; is_primary_fss?: boolean; notes?: string }) =>
+    api.post<FssRecord>("/hospitality/fss-register", b),
+
+  // HACCP CCP log
+  listHaccp: () => api.get<{ rows: HaccpEntry[]; total: number; breach_count: number }>("/hospitality/haccp-ccp"),
+  createHaccp: (b: { ccp_step: string; measured_value: number | string; hazard?: string; critical_limit?: string; within_limit?: boolean; corrective_action?: string; verified_by?: string }) =>
+    api.post<HaccpEntry>("/hospitality/haccp-ccp", b),
+
+  // Allergens
+  listAllergens: () => api.get<{ rows: Allergen[]; total: number }>("/hospitality/allergens"),
+  upsertAllergen: (b: { menu_item: string; contains?: string[]; may_contain?: string[]; notes?: string; item_id?: string }) =>
+    api.post<Allergen>("/hospitality/allergens", b),
+
+  // Cleaning
+  listCleaning: () => api.get<{ rows: CleaningTask[]; total: number }>("/hospitality/cleaning-tasks"),
+  createCleaning: (b: { area: string; frequency: string; method?: string; chemical?: string; responsible?: string }) =>
+    api.post<CleaningTask>("/hospitality/cleaning-tasks", b),
+  completeCleaning: (taskId: string, completed_by?: string) =>
+    api.post<{ task_id: string; status: string }>(`/hospitality/cleaning-tasks/${taskId}/complete`, { completed_by }),
+
+  // Suppliers
+  listSuppliers: () => api.get<{ rows: Supplier[]; total: number }>("/hospitality/suppliers"),
+  createSupplier: (b: { name: string; category?: string; abn?: string; contact_email?: string; contact_phone?: string; approval_certificates?: string[]; last_audit_at?: string; notes?: string }) =>
+    api.post<Supplier>("/hospitality/suppliers", b),
+
+  // Liquor (RSA / RSG / Approved Manager)
+  listLiquor: () => api.get<{ rows: LiquorCert[]; total: number }>("/hospitality/liquor-certs"),
+  createLiquor: (b: { worker_name: string; certificate_type: string; certificate_number?: string; jurisdiction?: string; issued_at?: string; expires_at?: string; worker_id?: string }) =>
+    api.post<LiquorCert>("/hospitality/liquor-certs", b),
+
+  // Council inspection pack
+  generateInspectionPack: (covers_period_days = 30) =>
+    api.post<InspectionPack>("/hospitality/inspection-pack", { covers_period_days }),
 };
 
-// ---------- TRANSPORT (Pre-trip inspection) ----------
+// =================== TRANSPORT ===================
+export interface FleetVehicle {
+  vehicle_id: string;
+  rego: string;
+  make?: string;
+  model?: string;
+  vehicle_class?: string;
+  gvm_kg?: number;
+  combo_gcm_kg?: number;
+  last_service_at?: string;
+  next_service_due?: string;
+  rego_expires_at?: string;
+  nhvr_accreditation?: string[];
+}
+
 export interface PreTripInspection {
   inspection_id: string;
   vehicle_rego: string;
@@ -48,15 +184,130 @@ export interface PreTripInspection {
   odometer_km?: number;
   inspected_at: string;
 }
+
+export interface FatigueLog {
+  log_id: string;
+  driver_name: string;
+  driver_id?: string;
+  vehicle_rego: string;
+  work_hours: number;
+  continuous_rest_hours: number;
+  standard: "standard" | "bfm" | "afm";
+  day_date: string;
+  breach: boolean;
+  breach_reasons: string[];
+  source: "manual" | "ewd";
+}
+
+export interface FitnessForDuty {
+  declaration_id: string;
+  driver_name: string;
+  driver_id?: string;
+  hours_slept_24h: number;
+  alcohol_last_8h: boolean;
+  on_medication_affecting: boolean;
+  unwell: boolean;
+  fit_to_drive: boolean;
+  declared_at: string;
+}
+
+export interface LoadRestraintRecord {
+  record_id: string;
+  vehicle_rego: string;
+  load_description: string;
+  load_weight_kg?: number;
+  restraint_method?: string;
+  number_of_straps?: number;
+  friction_modifier?: string;
+  performance_standard_met: boolean;
+  checked_by?: string;
+  created_at: string;
+}
+
+export interface MassDeclaration {
+  decl_id: string;
+  vehicle_rego: string;
+  scheme: string;            // GML / CML / HML / PBS
+  declared_mass_kg: number;
+  allowed_mass_kg: number;
+  overweight: boolean;
+  route?: string;
+  consigner?: string;
+  created_at: string;
+}
+
+export interface CorDueDiligence {
+  entry_id: string;
+  party: string;
+  hazard?: string;
+  action: string;
+  evidence_link?: string;
+  reviewed_by?: string;
+  next_review_at?: string;
+  created_at: string;
+}
+
+export interface NhvrOccurrence {
+  occurrence_id: string;
+  occurrence_type: string;
+  summary: string;
+  vehicle_rego: string;
+  driver_name?: string;
+  occurred_at: string;
+  location?: string;
+  notify_nhvr_by: string;
+  nhvr_notified_at?: string | null;
+  status: "pending" | "notified" | "closed";
+}
+
 export const TransportApi = {
+  // Fleet
+  listVehicles: () => api.get<{ rows: FleetVehicle[]; total: number }>("/transport/vehicles"),
+  createVehicle: (b: { rego: string; make?: string; model?: string; vehicle_class?: string; gvm_kg?: number; combo_gcm_kg?: number; last_service_at?: string; next_service_due?: string; rego_expires_at?: string; nhvr_accreditation?: string[] }) =>
+    api.post<FleetVehicle>("/transport/vehicles", b),
+
+  // Pre-trip
   listPreTrip: () => api.get<{ rows: PreTripInspection[]; total: number }>("/transport/pretrip-inspections"),
   createPreTrip: (b: { vehicle_rego: string; driver_name: string; driver_id?: string; checklist: Record<string, boolean>; notes?: string; odometer_km?: number; inspected_at?: string }) =>
     api.post<PreTripInspection>("/transport/pretrip-inspections", b),
+
+  // Fatigue
+  listFatigue: () => api.get<{ rows: FatigueLog[]; total: number }>("/transport/fatigue-logs"),
+  listFatigueBreaches: () => api.get<{ rows: FatigueLog[]; total: number }>("/transport/fatigue-logs/breaches"),
+  createFatigue: (b: { driver_name: string; work_hours: number; continuous_rest_hours?: number; vehicle_rego?: string; driver_id?: string; standard?: "standard" | "bfm" | "afm"; day_date?: string; source?: "manual" | "ewd" }) =>
+    api.post<FatigueLog>("/transport/fatigue-logs", b),
+
+  // FFD
+  listFfd: () => api.get<{ rows: FitnessForDuty[]; total: number }>("/transport/fitness-for-duty"),
+  createFfd: (b: { driver_name: string; hours_slept_24h: number; alcohol_last_8h?: boolean; on_medication_affecting?: boolean; unwell?: boolean; fit_to_drive?: boolean; driver_id?: string }) =>
+    api.post<FitnessForDuty>("/transport/fitness-for-duty", b),
+
+  // Load restraint
+  listLoadRestraint: () => api.get<{ rows: LoadRestraintRecord[]; total: number }>("/transport/load-restraint"),
+  createLoadRestraint: (b: { vehicle_rego: string; load_description: string; load_weight_kg?: number; restraint_method?: string; number_of_straps?: number; friction_modifier?: string; performance_standard_met?: boolean; checked_by?: string }) =>
+    api.post<LoadRestraintRecord>("/transport/load-restraint", b),
+
+  // Mass declarations
+  listMass: () => api.get<{ rows: MassDeclaration[]; total: number }>("/transport/mass-declarations"),
+  createMass: (b: { vehicle_rego: string; declared_mass_kg: number; allowed_mass_kg?: number; scheme?: string; route?: string; consigner?: string }) =>
+    api.post<MassDeclaration>("/transport/mass-declarations", b),
+
+  // CoR
+  listCor: () => api.get<{ rows: CorDueDiligence[]; total: number }>("/transport/cor-due-diligence"),
+  createCor: (b: { party: string; action: string; hazard?: string; evidence_link?: string; reviewed_by?: string; next_review_at?: string }) =>
+    api.post<CorDueDiligence>("/transport/cor-due-diligence", b),
+
+  // NHVR
+  listNhvr: () => api.get<{ rows: NhvrOccurrence[]; total: number }>("/transport/nhvr-occurrences"),
+  createNhvr: (b: { occurrence_type: string; summary: string; occurred_at: string; vehicle_rego?: string; driver_name?: string; location?: string }) =>
+    api.post<NhvrOccurrence>("/transport/nhvr-occurrences", b),
+
+  // Inline actions
   pauseDriver: (driverId: string, reason: string) =>
     api.post<{ ok: boolean; pause: any }>(`/transport/drivers/${driverId}/pause`, { reason }),
 };
 
-// ---------- HEALTHCARE (AHPRA + remind) ----------
+// =================== HEALTHCARE (AHPRA + remind) ===================
 export interface AhpraRecord {
   reg_id: string;
   worker_name: string;
@@ -77,13 +328,11 @@ export const HealthcareApi = {
   listAhpra: () => api.get<{ rows: AhpraRecord[]; total: number }>("/healthcare/ahpra-register"),
   createAhpra: (b: { worker_name: string; profession: string; registration_number: string; registration_type?: string; conditions?: string[]; issued_at?: string; expires_at?: string }) =>
     api.post<AhpraRecord>("/healthcare/ahpra-register", b),
-  // The Iter57 inline action lives at /healthcare/ahpra-register/{clinician_id}/remind
-  // but the canonical record above uses reg_id. Pass the registration's reg_id.
   remindAhpra: (clinicianOrRegId: string) =>
     api.post<{ ok: boolean; reminder: any }>(`/healthcare/ahpra-register/${clinicianOrRegId}/remind`, {}),
 };
 
-// ---------- RETAIL (Lone-worker) ----------
+// =================== RETAIL ===================
 export interface LoneWorkerCheckin {
   checkin_id: string;
   worker_name: string;

@@ -221,11 +221,19 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Hospitality Temperature Logs (list + stats + create)"
-    - "Transport Pre-trip inspection (18-item checklist + create)"
-    - "Healthcare AHPRA register (list + create + Iter57 remind)"
-    - "Retail Lone-worker shifts (active list + check-in + Iter57 acknowledge + escalate)"
-    - "Home — remove SAFEBASE wordmark; slim industry header"
+    - "Phase 1E batch 1 — Hospitality FSS Register (list + create)"
+    - "Phase 1E batch 1 — Hospitality HACCP CCP log (list + create + breach flag)"
+    - "Phase 1E batch 1 — Hospitality Allergens (PEAL upsert with 15 priority allergens)"
+    - "Phase 1E batch 1 — Hospitality Cleaning schedule (list + create + complete sign-off)"
+    - "Phase 1E batch 1 — Hospitality Suppliers (approved supplier register)"
+    - "Phase 1E batch 1 — Hospitality Liquor / RSA register"
+    - "Phase 1E batch 1 — Hospitality Council inspection pack generator"
+    - "Phase 1E batch 1 — Transport Fleet vehicles (rego + GVM + expiry)"
+    - "Phase 1E batch 1 — Transport Fatigue logs (HVNL std hours + breach view)"
+    - "Phase 1E batch 1 — Transport Fitness-for-duty (driver self-declaration)"
+    - "Phase 1E batch 1 — Transport NHVR Notifiable Occurrence (s 596A 24h)"
+    - "Capture tab rework — industry-specific tile sets (5 industries)"
+    - "Modules tab rework — full sidebar parity with web (Core/Industry/Safety/Workflows/Library/Apps & Add-ons/Settings) with LockedTile upgrade-to-unlock pattern"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
