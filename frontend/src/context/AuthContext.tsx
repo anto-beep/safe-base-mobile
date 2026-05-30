@@ -8,6 +8,13 @@ export interface SafeBaseUser {
   email?: string;
   name?: string;
   role?: string;
+  // role_variant is the SafeBase UI-routing variant returned by the backend
+  // (owner | safety_lead | supervisor | worker). Used for dashboard routing
+  // and tab-gating. `role` itself is the workspace permission role (the
+  // registering user is always workspace "owner"); role_variant captures
+  // what kind of person they are within the workspace.
+  role_variant?: "owner" | "safety_lead" | "supervisor" | "worker";
+  role_title?: string;
   industry?: string;
   primary_industry?: string;
   industries?: string[];
@@ -36,6 +43,14 @@ export interface RegisterInput {
   company_name?: string;
   industry?: string;
   role?: string;
+  // SafeBase role-catalogue fields — see src/data/rolesByIndustry.ts.
+  // The backend validates {role_id, role_label, role_variant,
+  // permission_role} against the canonical web-app catalogue.
+  role_id?: string;
+  role_label?: string;
+  role_variant?: "owner" | "safety_lead" | "supervisor" | "worker";
+  permission_role?: "owner" | "worker";
+  marketing_opt_in?: boolean;
 }
 
 const Ctx = createContext<AuthState | undefined>(undefined);

@@ -535,8 +535,57 @@ agent_communication:
 
   - agent: "main"
     message: |
-      Iteration 12 — follow-up fix. User: "upgrade to unlock is still
-      appearing. remove it for all free trials."
+      Iteration 13 — industry-specific role selection wired into mobile
+      sign-up flow. Task spec: 3-step wizard mirroring SafeBase web app
+      with role catalogue loaded per industry.
+
+      Files shipped:
+        - src/data/rolesByIndustry.ts — canonical ROLES_BY_INDUSTRY const
+          (trades 12, hospitality 12, transport 11, healthcare 13,
+          retail 11), with TypeScript types + getRolesFor helper +
+          landingRouteForVariant helper.
+        - app/register.tsx — fully rewritten as 3-step wizard
+          (StepIndustry / StepRole / StepAccount). Persists wizard
+          state to AsyncStorage under "safebase.register.wizard" so
+          a backgrounded app resumes mid-flow. Clears stale roleId
+          when industry changes.
+        - src/context/AuthContext.tsx — RegisterInput extended with
+          role_id / role_label / role_variant / permission_role /
+          marketing_opt_in. SafeBaseUser interface extended with
+          role_variant + role_title.
+        - app/(tabs)/_layout.tsx — Modules tab now gated on
+          role_variant === "worker" (not role) because backend always
+          sets the registering user's `role` to "owner" (they own the
+          workspace) regardless of variant.
+
+      Backend probe confirmed:
+        POST /api/auth/register with full payload {role_id, role_label,
+        role_variant, permission_role, marketing_opt_in} returns 200 +
+        {token, user}. user.role is always "owner" (workspace owner);
+        user.role_variant carries the actual variant ("worker" / etc.)
+
+      Acceptance criteria — verified via Playwright on web preview:
+        ✅ Trades → 12 roles (testIDs match spec)
+        ✅ Hospitality → 12 roles
+        ✅ Transport → 11 roles
+        ✅ Healthcare → 13 roles
+        ✅ Retail → 11 roles
+        ✅ Going back + changing industry rebuilds the role list
+           (no stale roleId across industry changes)
+        ✅ Submit fires POST /api/auth/register with all spec fields
+           (verified by intercepting fetch in the page)
+        ✅ Worker variant → worker dashboard. After registering an
+           Electrician, tabs render as Home/Capture/Settings only —
+           Modules tab is hidden. Home page shows WORKER eyebrow,
+           "My Credentials", "Recent Check-ins", simplified Capture.
+        ✅ Continue button disabled until valid selection on every step
+        ✅ "Back to industry" link on Step 2
+        ✅ "STEP 2 OF 3 · YOUR ROLE" indicator on Step 2
+
+      Bonus:
+        - Trial banner fires on the worker's post-signup landing
+          ("14 days left in your Trades & Construction free trial"),
+          per the trial auto-activation backend behaviour.
 
       Root cause was twofold:
         1. Race condition — during the brief window between auth-success

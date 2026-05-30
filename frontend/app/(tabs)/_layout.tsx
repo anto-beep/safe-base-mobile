@@ -34,7 +34,13 @@ export default function TabsLayout() {
   if (!user) return <Redirect href="/login" />;
 
   const accent = accentFor(user.industry);
-  const isWorker = (user.role ?? "").toLowerCase() === "worker";
+  // Workers (any industry) get a simplified tab set — Modules is hidden
+  // and Capture becomes the primary action surface. We read role_variant
+  // (returned by /api/auth/register and /api/auth/login) because `role`
+  // is the workspace permission role and is always "owner" for the user
+  // who created the workspace.
+  const variant = (user.role_variant ?? user.role ?? "").toString().toLowerCase();
+  const isWorker = variant === "worker";
 
   return (
     <Tabs
