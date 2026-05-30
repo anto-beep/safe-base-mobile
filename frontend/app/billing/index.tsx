@@ -10,7 +10,7 @@
 // we refresh /billing/my-subscriptions.
 
 import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import React, { useCallback, useEffect, useState } from "react";
 import {
@@ -35,10 +35,32 @@ import { useAuth } from "@/src/context/AuthContext";
 export default function BillingScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const accent = accentFor(user?.industry);
+  const params = useLocalSearchParams<{ industry?: string }>();
   const { subscriptions, statusFor, refresh, startTrial, cancel, change, anyTrialActive } = useBilling();
   const [busy, setBusy] = useState<string | null>(null); // industry currently transitioning
   const [plansOpen, setPlansOpen] = useState<IndustrySlug | null>(null);
+
+  // Which industry are we viewing? Resolution order:
+  //   1. ?industry=X query param (e.g. deep-link from the trial banner)
+  //   2. user.primary_industry / user.industry (the user's main industry)
+  //   3. fallback to "trades" so we never render an empty screen
+  const VALID = ALL_INDUSTRIES as readonly string[];
+  const fromQuery = typeof params.industry === "string" && VALID.includes(params.industry)
+    ? (params.industry as IndustrySlug)
+    : null;
+  const fromUser = (user?.primary_industry ?? user?.industry) as string | undefined;
+  const fromUserValid = fromUser && VALID.includes(fromUser) ? (fromUser as IndustrySlug) : null;
+
+  const [focused, setFocused] = useState<IndustrySlug>(
+    (fromQuery ?? fromUserValid ?? "trades") as IndustrySlug,
+  );
+
+  // Re-sync if the URL query changes after mount.
+  useEffect(() => {
+    if (fromQuery && fromQuery !== focused) setFocused(fromQuery);
+  }, [fromQuery]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const accent = INDUSTRY_ACCENT[focused] ?? accentFor(user?.industry);
 
   // Always refresh on focus so the screen reflects post-Stripe-return state.
   useFocusEffect(
@@ -116,21 +138,70 @@ export default function BillingScreen() {
         </TouchableOpacity>
         <ScreenHeader
           eyebrow="Plan"
-          title="Billing"
-          subtitle="14-day free trial · unlock every module across every industry. Upgrade any time."
+          title={INDUSTRY_LABEL[focused]}
+          subtitle={`14-day free trial · every module in ${INDUSTRY_LABEL[focused]} unlocked. Upgrade any time.`}
           accent={accent}
         />
 
-        {ALL_INDUSTRIES.map((ind) => {
-          const st = statusFor(ind as IndustrySlug);
-          const cAccent = INDUSTRY_ACCENT[ind as IndustrySlug] ?? accent;
+        {/* Industry switcher — lets the user pivot to another industry's
+            plans without leaving the screen. Defaults to the user's primary
+            industry; the trial banner deep-links via ?industry=... so users
+            land directly on the industry they care about. */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.switcherRow}>
+          {(ALL_INDUSTRIES as IndustrySlug[]).map((ind) => {
+            const isActive = ind === focused;
+            const a = INDUSTRY_ACCENT[ind];
+            const st = statusFor(ind);
+            return (
+              <TouchableOpacity
+                key={ind}
+                testID={`billing-switch-${ind}`}
+                onPress={() => setFocused(ind)}
+                activeOpacity={0.85}
+                style={[
+                  styles.switcherChip,
+                  {
+                    borderColor: isActive ? a : COLORS.border,
+                    backgroundColor: isActive ? `${a}1A` : "transparent",
+                  },
+                ]}
+              >
+                <View style={[styles.switcherDot, { backgroundColor: a }]} />
+                <Text
+                  style={[
+                    styles.switcherText,
+                    { color: isActive ? COLORS.textPrimary : COLORS.textSecondary },
+                  ]}
+                >
+                  {INDUSTRY_LABEL[ind]}
+                </Text>
+                {st.kind === "trial" ? (
+                  <View style={[styles.switcherBadge, { backgroundColor: TOKENS.authority }]}>
+                    <Text style={styles.switcherBadgeText}>{st.daysLeft ?? 0}D</Text>
+                  </View>
+                ) : null}
+                {st.kind === "active" ? (
+                  <View style={[styles.switcherBadge, { backgroundColor: TOKENS.success }]}>
+                    <Text style={styles.switcherBadgeText}>ON</Text>
+                  </View>
+                ) : null}
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        {/* Render exactly ONE industry card — the focused one. */}
+        {(() => {
+          const ind = focused;
+          const st = statusFor(ind);
+          const cAccent = INDUSTRY_ACCENT[ind] ?? accent;
           const isBusy = busy === ind;
           return (
             <Card key={ind} testID={`billing-card-${ind}`}>
               <View style={styles.cardHeader}>
                 <View style={{ flex: 1 }}>
-                  <Eyebrow color={cAccent}>{INDUSTRY_LABEL[ind as IndustrySlug]}</Eyebrow>
-                  <Text style={styles.industryName}>{INDUSTRY_LABEL[ind as IndustrySlug]}</Text>
+                  <Eyebrow color={cAccent}>{INDUSTRY_LABEL[ind]}</Eyebrow>
+                  <Text style={styles.industryName}>{INDUSTRY_LABEL[ind]}</Text>
                 </View>
                 <StatusBadge kind={st.kind} daysLeft={st.daysLeft} />
               </View>
@@ -165,7 +236,7 @@ export default function BillingScreen() {
                     label={isBusy ? "Starting…" : "Start free trial"}
                     iconName="gift-outline"
                     accent={cAccent}
-                    onPress={() => handleStartTrial(ind as IndustrySlug)}
+                    onPress={() => handleStartTrial(ind)}
                     loading={isBusy}
                   />
                 ) : null}
@@ -180,7 +251,7 @@ export default function BillingScreen() {
                     label={st.kind === "expired" && !anyTrialActive ? "Upgrade to unlock" : "View plans & upgrade"}
                     iconName="rocket-outline"
                     accent={cAccent}
-                    onPress={() => setPlansOpen(ind as IndustrySlug)}
+                    onPress={() => setPlansOpen(ind)}
                   />
                 ) : null}
 
@@ -190,12 +261,12 @@ export default function BillingScreen() {
                       testID={`billing-change-${ind}`}
                       label="Change plan"
                       iconName="swap-horizontal-outline"
-                      onPress={() => setPlansOpen(ind as IndustrySlug)}
+                      onPress={() => setPlansOpen(ind)}
                     />
                     <View style={{ height: 8 }} />
                     <TouchableOpacity
                       testID={`billing-cancel-${ind}`}
-                      onPress={() => handleCancel(ind as IndustrySlug)}
+                      onPress={() => handleCancel(ind)}
                       style={styles.cancelBtn}
                       activeOpacity={0.85}
                     >
@@ -206,7 +277,22 @@ export default function BillingScreen() {
               </View>
             </Card>
           );
-        })}
+        })()}
+
+        {/* Right-size helper link */}
+        <TouchableOpacity
+          testID="billing-rightsizer-link"
+          onPress={() => router.push(`/plan-rightsizer?industry=${focused}` as any)}
+          activeOpacity={0.85}
+          style={[styles.helperRow, { borderColor: accent }]}
+        >
+          <Ionicons name="construct-outline" size={18} color={accent} />
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={styles.helperTitle}>Not sure which plan?</Text>
+            <Text style={styles.helperSub}>Answer 3 questions and we'll recommend the right tier for your team.</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
+        </TouchableOpacity>
 
         <View style={{ height: 60 }} />
       </ScrollView>
@@ -329,6 +415,15 @@ const styles = StyleSheet.create({
   actions: { marginTop: 6 },
   cancelBtn: { padding: 10, alignItems: "center" },
   cancelText: { color: COLORS.error, fontSize: 12, fontWeight: "800", letterSpacing: 1 },
+  switcherRow: { flexGrow: 0, marginBottom: 16, marginHorizontal: -4 },
+  switcherChip: { flexDirection: "row", alignItems: "center", borderWidth: 1, paddingHorizontal: 12, paddingVertical: 8, marginHorizontal: 4 },
+  switcherDot: { width: 8, height: 8, marginRight: 8 },
+  switcherText: { fontSize: 12, fontWeight: "700", letterSpacing: 0.4 },
+  switcherBadge: { marginLeft: 8, paddingHorizontal: 5, paddingVertical: 2 },
+  switcherBadgeText: { color: "#fff", fontSize: 9, fontWeight: "800", letterSpacing: 0.6 },
+  helperRow: { flexDirection: "row", alignItems: "center", borderWidth: 1, padding: 14, marginTop: 14 },
+  helperTitle: { color: COLORS.textPrimary, fontSize: 15, fontWeight: "700" },
+  helperSub: { color: COLORS.textMuted, fontSize: 12, marginTop: 2 },
   backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "#00000099" },
   sheet: { position: "absolute", left: 0, right: 0, bottom: 0, backgroundColor: COLORS.appBg, borderTopWidth: 1, borderTopColor: COLORS.border, padding: 20, maxHeight: "85%" },
   sheetHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 },

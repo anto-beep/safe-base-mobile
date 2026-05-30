@@ -33,6 +33,8 @@ const ACCOUNT: Row[] = [
 
 const PLAN: Row[] = [
   { id: "billing", label: "Billing & plan", sub: "Trials, subscriptions, invoices", icon: "card-outline", href: "/billing" },
+  { id: "rightsizer", label: "Find your right plan", sub: "3 questions → recommended tier", icon: "construct-outline", href: "/plan-rightsizer" },
+  { id: "resources", label: "Industry resources", sub: "Templates, registers & regulator references", icon: "library-outline", href: "/resources" },
   { id: "notifs", label: "Notification preferences", sub: "Channels, schedules, digests", icon: "notifications-outline", href: "/settings/notifications" },
 ];
 

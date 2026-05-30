@@ -2,6 +2,7 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
+import { View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { FloatingOverlays } from "@/src/components/FloatingOverlays";
@@ -49,14 +50,21 @@ export default function RootLayout() {
           <AdminAuthProvider>
             <BillingProvider>
               <StatusBar style="dark" />
-              <Stack
-                screenOptions={{
-                  headerShown: false,
-                  contentStyle: { backgroundColor: "#FFFFFF" },
-                  animation: "fade",
-                }}
-              />
-              <TrialBanner />
+              {/* Banner sits ABOVE the Stack in the layout tree so it
+                  occupies real height and never overlaps a screen's
+                  back button or chrome. */}
+              <View style={{ flex: 1 }}>
+                <TrialBanner />
+                <View style={{ flex: 1 }}>
+                  <Stack
+                    screenOptions={{
+                      headerShown: false,
+                      contentStyle: { backgroundColor: "#FFFFFF" },
+                      animation: "fade",
+                    }}
+                  />
+                </View>
+              </View>
               <FloatingOverlays />
             </BillingProvider>
           </AdminAuthProvider>

@@ -535,9 +535,69 @@ agent_communication:
 
   - agent: "main"
     message: |
-      Iteration 13 — industry-specific role selection wired into mobile
-      sign-up flow. Task spec: 3-step wizard mirroring SafeBase web app
-      with role catalogue loaded per industry.
+      Iteration 14 — user requested 5 things:
+        1. Trial banner covers back button → fix
+        2. Banner colour should match industry, not universal blue
+        3. Tapping banner / opening /billing should show only THAT
+           industry's plans
+        4. Add the web app's /plan-rightsizer tool to mobile
+        5. Industry-specific resources only — trades user sees only
+           trades resources
+
+      Files shipped:
+        - src/components/TrialBanner.tsx — rewritten: no longer
+          position:absolute. Background uses INDUSTRY_ACCENT[industry];
+          urgent (≤3 days) overrides to destructive red. Foreground
+          colour picked by luminance for legibility. Deep-links to
+          /billing?industry=<trial-industry>.
+        - app/_layout.tsx — Stack now wrapped in a flex column with the
+          TrialBanner as a sibling above it. The banner therefore takes
+          its natural height in the layout tree and CANNOT overlap any
+          screen chrome.
+        - app/billing/index.tsx — single-industry rendering:
+            • reads ?industry=X from query, falls back to user's primary
+              industry, then to "trades"
+            • renders ONE billing card (the focused industry) instead of
+              all five
+            • horizontal industry-switcher chip row at the top with
+              TRIAL · ND badges and ACTIVE badges
+            • new "Not sure which plan?" helper row at the bottom that
+              opens /plan-rightsizer
+        - app/plan-rightsizer/index.tsx — NEW 3-question client-side
+          wizard mirroring the web tool:
+            Step 1 — industry (5 tap-tiles; pre-selected from query/user)
+            Step 2 — team size (numeric input + buckets 1/5/15/50+)
+            Step 3 — locations (numeric input + buckets 1/2/5/10+)
+            Result — recommendation card pulled from
+            /billing/plans?industry=X. Picks the smallest annual tier
+            whose worker_cap ≥ team size; multi-location workspaces are
+            bumped one tier. Result card shows annual price + monthly
+            twin + worker cap + a "Continue to upgrade" CTA that lands
+            on /billing?industry=<industry>.
+        - src/data/resourcesByIndustry.ts — curated per-industry resource
+          catalogue (trades 7, hospitality 7, transport 7, healthcare 7,
+          retail 6). Each entry has kind: template/guide/regulator/
+          register, an internal route or external URL.
+        - app/resources/index.tsx — NEW screen that renders ONLY the
+          signed-in user's industry resources. Kind-badge pill in
+          appropriate colour (template=authority, guide=success,
+          regulator=destructive, register=warning). External entries
+          open via Linking.openURL.
+        - app/(tabs)/settings.tsx — Plan section now exposes the two new
+          rows: "Find your right plan" → /plan-rightsizer; "Industry
+          resources" → /resources.
+
+      Live verification on http://localhost:3000 as trades.demo:
+        • Banner position: relative, height 37px, bg #FFA630 (trades
+          amber — was universal authority blue before)
+        • Banner CTA → /billing?industry=trades; exactly 1 card rendered;
+          switching to Healthcare via chip → 1 card billing-card-
+          healthcare; no other industry cards leak.
+        • /plan-rightsizer?industry=healthcare loads; team size step
+          renders with buckets 1/5/15/50+; flow reaches recommendation
+          step and pulls plans from backend.
+        • /resources renders exactly 7 trades resources for trades.demo
+          with "TRADES & CONSTRUCTION" eyebrow and trades amber.
 
       Files shipped:
         - src/data/rolesByIndustry.ts — canonical ROLES_BY_INDUSTRY const
